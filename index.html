@@ -149,6 +149,22 @@ details.drawer .sact{margin-left:auto}
 .ditem{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:14px;flex-wrap:wrap}
 .ditem .t{flex:1 1 200px;min-width:0;color:var(--muted);overflow-wrap:anywhere}
 .ditem .when{font-size:11px;color:var(--faint)}
+.dexp{flex:1 1 200px;min-width:0;display:flex;align-items:flex-start;gap:8px;text-align:left}
+.dexp .t{flex:1}
+.dexp:hover .t{color:var(--fg)}
+.dexp .caret{flex:none;width:6px;height:6px;margin-top:.55em;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+.ditem.open .dexp .caret{transform:rotate(45deg)}
+.ddetail{flex-basis:100%;margin:2px 0 6px 14px;padding:10px 12px;border-radius:var(--r);background:var(--sunk);display:flex;flex-direction:column;gap:8px}
+.dnote p{margin:2px 0 0;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.dsubs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.dsubs li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px}
+.dsubs li.done .st{text-decoration:line-through;color:var(--muted)}
+.dsubs .st{flex:1 1 160px;min-width:0;overflow-wrap:anywhere}
+.dcheck{width:16px;height:16px;border-radius:4px;border:1.5px solid var(--faint);display:grid;place-items:center;flex:none}
+.dsubs li.done .dcheck{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.dcheck svg{width:11px;height:11px}
+.snote{flex-basis:100%;margin:0 0 0 24px;font-size:12px;color:var(--muted);white-space:pre-wrap;overflow-wrap:anywhere}
+.ddetail .hint{font-size:12px}
 .empty-note{color:var(--faint);font-size:13px;padding:4px 0 6px}
 
 /* dialogs */
@@ -494,7 +510,7 @@ const sampleTasks=()=>{const now=Date.now();let i=0;const T=(title,due,o={})=>({
 
 let state={tasks:[],settings:defaultSettings(),sample:false};
 let persisted=false;
-const ui={open:new Set(),subNote:new Set(),lastDay:todayStr()};
+const ui={open:new Set(),subNote:new Set(),doneOpen:new Set(),lastDay:todayStr()};
 
 let saveTimer=null;
 function save(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{if(persisted)await DB.set('state',state)},150);updateBadge()}
@@ -573,6 +589,27 @@ function subHTML(t,s){
   </div>`;
 }
 
+/* 已完成區的一筆：可展開查看備註與子任務（唯讀） */
+function doneItemHTML(t){
+  const open=ui.doneOpen.has(t.id), canOpen=t.subs.length||t.note;
+  const doneSubs=t.subs.filter(s=>s.done).length;
+  let h=`<div class="ditem${open?' open':''}" data-id="${t.id}">
+    ${canOpen?`<button class="dexp" type="button" data-act="doneExpand" aria-expanded="${open}"><span class="caret" aria-hidden="true"></span><span class="t">${esc(t.title)}${t.subs.length?`（子任務 ${doneSubs}/${t.subs.length}）`:''}</span></button>`
+      :`<span class="t">${esc(t.title)}</span>`}
+    <span class="when mono">${t.doneAt?'完成於 '+shortDate(ymd(new Date(t.doneAt))):''}</span>
+    <button class="mini" type="button" data-act="undone">取消完成</button><button class="mini" type="button" data-act="trash">丟到垃圾桶</button>`;
+  if(open){
+    h+=`<div class="ddetail">`;
+    if(t.note)h+=`<div class="dnote"><span class="lbl">備註</span><p>${esc(t.note)}</p></div>`;
+    if(t.subs.length)h+=`<ul class="dsubs">${t.subs.map(s=>`<li class="${s.done?'done':''}" style="--c:${colorFor(daysLeft(s.due))}">
+      <span class="dcheck" aria-label="${s.done?'已完成':'未完成'}">${s.done?CHECK:''}</span>
+      <span class="st">${esc(s.title)}</span>${s.due?`<span class="dstr mono">${shortDate(s.due)}</span>`:''}
+      ${s.note?`<p class="snote">${esc(s.note)}</p>`:''}</li>`).join('')}</ul>`;
+    h+=`<p class="hint">要修改內容，請先按「取消完成」讓它回到清單。</p></div>`;
+  }
+  return h+'</div>';
+}
+
 function render(){
   const ae=document.activeElement, focusId=ae&&ae.id, sel=ae&&'selectionStart' in ae?[ae.selectionStart,ae.selectionEnd]:null;
   const t0=new Date();
@@ -602,7 +639,7 @@ function render(){
 
   doneArea.sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   $('#done-count').textContent=doneArea.length;
-  $('#done-list').innerHTML=doneArea.length?doneArea.map(t=>`<div class="ditem" data-id="${t.id}"><span class="t">${esc(t.title)}${t.subs.length?`（子任務 ${t.subs.length}）`:''}</span><span class="when mono">${t.doneAt?'完成於 '+shortDate(ymd(new Date(t.doneAt))):''}</span><button class="mini" type="button" data-act="undone">取消完成</button><button class="mini" type="button" data-act="trash">丟到垃圾桶</button></div>`).join('')
+  $('#done-list').innerHTML=doneArea.length?doneArea.map(doneItemHTML).join('')
     :'<div class="empty-note">設定為「完成後移到已完成」的組別，勾選完成的事項會集中在這裡。</div>';
   const trash=state.tasks.filter(t=>t.trashed).sort((a,b)=>b.trashedAt-a.trashedAt);
   $('#trash-count').textContent=trash.length;
@@ -639,7 +676,8 @@ const actions={
   addSub(t){const ti=document.getElementById('as-'+t.id),di=document.getElementById('asd-'+t.id);const v=ti.value.trim();if(!v){ti.focus();return}
     t.subs.push({id:uid(),title:v,due:di.value||null,note:'',done:false});save();render();document.getElementById('as-'+t.id)?.focus()},
   trash(t){const before=snapshot();t.trashed=true;t.trashedAt=Date.now();ui.open.delete(t.id);save();render();toast(`已把「${t.title}」丟到垃圾桶`,restoreFrom(before))},
-  undone(t){t.done=false;t.doneAt=null;save();render()},
+  undone(t){t.done=false;t.doneAt=null;ui.doneOpen.delete(t.id);save();render()},
+  doneExpand(t){ui.doneOpen.has(t.id)?ui.doneOpen.delete(t.id):ui.doneOpen.add(t.id);render()},
   restore(t){t.trashed=false;t.trashedAt=null;save();render()},
   purge(t){const before=snapshot();state.tasks=state.tasks.filter(x=>x!==t);save();render();toast('已永久刪除',restoreFrom(before))},
 };
