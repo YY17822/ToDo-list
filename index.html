@@ -216,7 +216,7 @@ dialog::backdrop{background:rgba(10,15,25,.45)}
 <dialog id="dlg-settings"><div class="dlg">
   <header><h3>層級設定</h3></header>
   <div class="body">
-    <p class="hint">每個層級設定「剩餘天數上限」，系統由上往下比對，落在第一個符合的層級。負數代表逾期，0 代表今天到期。最後一列收納其餘所有天數。</p>
+    <p class="hint">每個層級設定「剩餘天數上限」，系統由上往下比對，落在第一個符合的層級。負數代表逾期，0 代表今天到期。最後一列收納其餘所有天數，以及沒有設定到期日的事項。</p>
     <div class="tier-table" id="tier-table"></div>
     <div><button class="btn" type="button" id="tier-add">新增層級</button></div>
     <div class="field"><span class="lbl">母任務依哪個日期分組</span>
@@ -312,7 +312,7 @@ function save(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{if(persis
 
 /* ---------- tiers ---------- */
 const sortedTiers=(tiers=state.settings.tiers)=>[...tiers].sort((a,b)=>(a.max==null?1e9:a.max)-(b.max==null?1e9:b.max));
-function tierFor(d){if(d==null)return state.settings.noDate;for(const t of sortedTiers())if(t.max==null||d<=t.max)return t;return sortedTiers().at(-1)}
+function tierFor(d){if(d==null)return sortedTiers().at(-1);for(const t of sortedTiers())if(t.max==null||d<=t.max)return t;return sortedTiers().at(-1)}
 const colorFor=d=>tierFor(d).color;
 function rangeText(tiers,idx){
   const st=sortedTiers(tiers),t=st[idx],prev=idx>0?st[idx-1].max:null;
@@ -389,7 +389,7 @@ function render(){
   const t0=new Date();
   $('#today').textContent=`${t0.getFullYear()}/${t0.getMonth()+1}/${t0.getDate()}（${WD[t0.getDay()]}）`;
   const live=state.tasks.filter(t=>!t.trashed);
-  const tiers=[...sortedTiers(),state.settings.noDate];
+  const tiers=sortedTiers();
   const buckets=new Map(tiers.map(t=>[t.id,[]])), doneArea=[];
   for(const t of live){const tier=tierFor(daysLeft(groupDate(t)));
     if(t.done&&tier.hideDone)doneArea.push(t);else buckets.get(tier.id).push(t);}
@@ -397,7 +397,7 @@ function render(){
   const st=sortedTiers();
   $('#groups').innerHTML=tiers.map(tier=>{
     const items=buckets.get(tier.id).sort(byDate), idx=st.indexOf(tier);
-    const range=tier===state.settings.noDate?'沒有設定到期日':rangeText(state.settings.tiers,idx);
+    const range=rangeText(state.settings.tiers,idx)+(tier.max==null?'，含無期限':'');
     const undone=items.filter(t=>!t.done).length;
     return `<section class="group${items.length?'':' empty'}" style="--c:${tier.color}" data-tier="${tier.id}">
       <div class="ghead"><h2>${esc(tier.name)}</h2><span class="range">${esc(range)}</span><span class="count">${undone}</span>
@@ -457,7 +457,7 @@ const actions={
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-edit],.ttl-edit'))return; // 標題本身：單擊不展開，雙擊才編輯
   const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act;
-  if(act==='hideToggle'){const id=b.closest('[data-tier]').dataset.tier;const tier=id===state.settings.noDate.id?state.settings.noDate:state.settings.tiers.find(t=>t.id===id);tier.hideDone=!tier.hideDone;save();render();return}
+  if(act==='hideToggle'){const id=b.closest('[data-tier]').dataset.tier;const tier=state.settings.tiers.find(t=>t.id===id);if(!tier)return;tier.hideDone=!tier.hideDone;save();render();return}
   if(act==='clearSample'){state.tasks=state.tasks.filter(t=>!t.sample);state.sample=false;ui.open.clear();save();render();return}
   if(act==='emptyTrash'){e.preventDefault();const before=snapshot();const n=state.tasks.filter(t=>t.trashed).length;state.tasks=state.tasks.filter(t=>!t.trashed);save();render();toast(`已永久刪除 ${n} 筆`,restoreFrom(before));return}
   const host=b.closest('[data-id]');if(!host)return;const t=findT(host.dataset.id);if(!t)return;
@@ -515,17 +515,13 @@ function drawTiers(){
   st.map((t,i)=>`<div class="trow" data-tid="${t.id}">
     <input type="color" id="tc-${t.id}" value="${t.color}" data-k="color" aria-label="顏色">
     <input class="text-in" id="tn-${t.id}" value="${esc(t.name)}" data-k="name" aria-label="名稱">
-    <span class="num">${t.max==null?'其餘全部':`<span>≤</span><input class="text-in" type="number" step="1" id="tm-${t.id}" value="${t.max}" data-k="max" aria-label="天數上限"><span>天</span>`}</span>
+    <span class="num">${t.max==null?'其餘全部（含無期限）':`<span>≤</span><input class="text-in" type="number" step="1" id="tm-${t.id}" value="${t.max}" data-k="max" aria-label="天數上限"><span>天</span>`}</span>
     <span class="rng">${esc(rangeText(draft.tiers,i))}</span>
     ${t.max==null?'<span></span>':`<button class="x" type="button" data-del="${t.id}" aria-label="刪除層級">×</button>`}
-  </div>`).join('')+
-  `<div class="trow" data-tid="${draft.noDate.id}">
-    <input type="color" id="tc-none" value="${draft.noDate.color}" data-k="color" aria-label="顏色">
-    <input class="text-in" id="tn-none" value="${esc(draft.noDate.name)}" data-k="name" aria-label="名稱">
-    <span class="num">沒有到期日</span><span class="rng">未設定日期的事項</span><span></span></div>`;
+  </div>`).join('');
   $('#gb-'+draft.groupBy).checked=true;
 }
-const draftTier=id=>id===draft.noDate.id?draft.noDate:draft.tiers.find(t=>t.id===id);
+const draftTier=id=>draft.tiers.find(t=>t.id===id);
 $('#tier-table').addEventListener('input',e=>{const el=e.target,row=el.closest('[data-tid]');if(!row)return;const t=draftTier(row.dataset.tid);
   if(el.dataset.k==='color')t.color=el.value;if(el.dataset.k==='name')t.name=el.value;});
 $('#tier-table').addEventListener('change',e=>{const el=e.target;if(el.dataset.k!=='max')return;const t=draftTier(el.closest('[data-tid]').dataset.tid);
@@ -537,7 +533,7 @@ $('#tier-reset').addEventListener('click',()=>{draft=defaultSettings();drawTiers
 $('#tier-save').addEventListener('click',()=>{
   draft.groupBy=document.querySelector('input[name=groupBy]:checked')?.value||'earliest';
   const err=$('#tier-err');const maxes=draft.tiers.filter(t=>t.max!=null).map(t=>t.max);
-  if(draft.tiers.some(t=>!t.name.trim())||!draft.noDate.name.trim()){err.textContent='每個層級都需要名稱。';err.hidden=false;return}
+  if(draft.tiers.some(t=>!t.name.trim())){err.textContent='每個層級都需要名稱。';err.hidden=false;return}
   if(new Set(maxes).size!==maxes.length){err.textContent='有兩個層級的天數上限相同，請改成不同數字。';err.hidden=false;return}
   err.hidden=true;draft.tiers.forEach(t=>t.name=t.name.trim());state.settings=draft;draft=null;save();render();dlgS.close();toast('層級設定已儲存')});
 $('#btn-settings').addEventListener('click',()=>{draft=JSON.parse(JSON.stringify(state.settings));$('#tier-err').hidden=true;drawTiers();dlgS.showModal()});
