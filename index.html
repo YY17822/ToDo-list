@@ -370,17 +370,48 @@ h1 .hop{display:inline-block;position:relative;z-index:20;transform-origin:50% 1
 html[data-ui^="tech"] h1{background:none;-webkit-background-clip:border-box;background-clip:border-box;color:var(--accent)}
 html[data-ui^="tech"] h1 .hop{color:color-mix(in srgb,var(--accent-2) calc(var(--i) * 33%),var(--accent))}
 h1{padding-top:.25em}
+/* ===================== 登入畫面、載入中、同步狀態 ===================== */
+.login{min-height:calc(100vh - 100px);display:grid;place-items:center;padding-block:40px}
+.login-card{width:min(360px,100%);box-sizing:border-box;background:var(--surface-solid);border:1px solid var(--line);border-radius:var(--r);padding:24px;display:flex;flex-direction:column;gap:8px;box-shadow:0 12px 40px -24px var(--accent)}
+.login-card h2{margin:0;font-size:20px;font-family:var(--f-display);letter-spacing:.06em}
+.login-card .hint{margin:0 0 6px;font-size:13px}
+.login-card label{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.login-card input{border:1px solid var(--line);background:var(--bg);border-radius:var(--r);padding:9px 10px;color:var(--fg)}
+.login-card input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 10px -4px var(--accent)}
+.login-card .btn{margin-top:8px;padding:9px}
+.login-card .btn:disabled{opacity:.6;cursor:wait}
+.loading{padding:40px 0;text-align:center;color:var(--muted)}
+.sync{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;margin-top:4px}
+.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--faint)}
+.sync[data-s="ok"]::before{background:#3E9B6B}
+.sync[data-s="saving"]::before{background:#E0A526}
+.sync[data-s="error"]::before{background:var(--danger)}
+.banner.error{border-color:color-mix(in srgb,var(--danger) 50%,var(--line));background:color-mix(in srgb,var(--danger) 7%,var(--surface-solid))}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
 
 
-<div class="wrap">
+<div class="login" id="login" hidden>
+  <form class="login-card" id="loginform" autocomplete="on">
+    <h2>登入 ToDo</h2>
+    <p class="hint">使用在 Supabase 後台建立的帳號登入。</p>
+    <label for="li-email">帳號（Email）</label>
+    <input id="li-email" type="email" autocomplete="username" required>
+    <label for="li-pw">密碼</label>
+    <input id="li-pw" type="password" autocomplete="current-password" required>
+    <p class="err" id="li-err" hidden></p>
+    <button class="btn primary" type="submit" id="li-btn">登入</button>
+  </form>
+</div>
+
+<div class="wrap" id="app" hidden>
   <header>
     <div>
       <h1 aria-label="ToDo"><span class="logo" aria-hidden="true"><span class="hop" style="--i:0;--tilt:-8deg">T</span><span class="hop" style="--i:1;--tilt:8deg">o</span><span class="hop" style="--i:2;--tilt:-8deg">D</span><span class="hop" style="--i:3;--tilt:8deg">o</span></span></h1>
       <div class="today mono" id="today"></div>
+      <div class="sync" id="sync" data-s="ok" role="status">已同步</div>
     </div>
     <div class="tools">
       <div class="uiswitch" id="uiswitch" role="group" aria-label="介面風格">
@@ -388,6 +419,7 @@ h1{padding-top:.25em}
       </div>
       <button class="btn" id="btn-backup" type="button">備份</button>
       <button class="btn" id="btn-settings" type="button">層級設定</button>
+      <button class="btn" id="btn-logout" type="button">登出</button>
     </div>
   </header>
   <div class="summary" id="summary"></div>
@@ -440,12 +472,12 @@ h1{padding-top:.25em}
 <dialog id="dlg-backup"><div class="dlg">
   <header><h3>備份與還原</h3></header>
   <div class="body">
-    <p class="hint">資料只存在這台電腦的瀏覽器裡。清除瀏覽器資料或重灌電腦會讓資料消失，建議定期下載備份檔。</p>
+    <p class="hint">資料存放在雲端資料庫。這裡可以另外下載一份備份檔留存，或把舊版（本機版）的備份匯入雲端。</p>
     <div class="frow">
       <button class="btn primary" type="button" id="bk-download">下載備份檔 (.json)</button>
       <button class="btn" type="button" id="bk-copy">複製備份內容</button>
     </div>
-    <div class="field"><label for="bk-import-text">還原：選擇備份檔，或貼上備份內容</label>
+    <div class="field"><label for="bk-import-text">匯入：選擇備份檔，或貼上備份內容（只匯入待辦事項，會新增到雲端，不會刪除現有資料）</label>
       <input type="file" id="bk-file" accept=".json,application/json">
       <textarea id="bk-import-text" rows="4" placeholder="貼上備份內容"></textarea>
     </div>
@@ -453,19 +485,20 @@ h1{padding-top:.25em}
   </div>
   <footer>
     <button class="btn" type="button" data-close>關閉</button>
-    <button class="btn danger" type="button" id="bk-import">還原（取代目前全部資料）</button>
+    <button class="btn primary" type="button" id="bk-import">匯入到雲端</button>
   </footer>
 </div></dialog>
 
 <div class="toast" id="toast" hidden><span id="toast-msg"></span><button type="button" id="toast-undo">復原</button></div>
 
+<script src="config.js"></script>
+<script src="api.js"></script>
 <script>
 (()=>{
 try{const u=localStorage.getItem('todo-ui');if(u)document.documentElement.dataset.ui=u}catch(e){}
 const DAY=86400000, WD='日一二三四五六';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
 const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const todayStr=()=>ymd(new Date());
 const parse=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
@@ -474,46 +507,76 @@ const daysLeft=s=>{if(!s)return null;const t=new Date();t.setHours(0,0,0,0);retu
 const shortDate=s=>{const d=parse(s);return (d.getMonth()+1)+'/'+d.getDate()+' ('+WD[d.getDay()]+')'};
 const dayText=d=>d==null?'無期限':d<0?`逾期 ${-d} 天`:d===0?'今天':d===1?'明天':`剩 ${d} 天`;
 
-/* ---------- storage: IndexedDB with in-memory fallback ---------- */
-const DB={db:null,
-  open(){return new Promise(res=>{try{const r=indexedDB.open('todo-board',1);
-    r.onupgradeneeded=()=>r.result.createObjectStore('kv');
-    r.onsuccess=()=>{this.db=r.result;res(true)};r.onerror=()=>res(false);r.onblocked=()=>res(false)}catch(e){res(false)}})},
-  get(k){return new Promise(res=>{if(!this.db)return res(undefined);try{const q=this.db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>res(undefined)}catch(e){res(undefined)}})},
-  set(k,v){return new Promise(res=>{if(!this.db)return res(false);try{const tx=this.db.transaction('kv','readwrite');tx.objectStore('kv').put(v,k);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false)}catch(e){res(false)}})}
-};
-
-const defaultSettings=()=>({
-  tiers:[
-    {id:'t-over',name:'已逾期',max:-1,color:'#D64545',hideDone:false},
-    {id:'t-today',name:'今天到期',max:0,color:'#E8642E',hideDone:false},
-    {id:'t-3',name:'三天內',max:3,color:'#EE9A2A',hideDone:false},
-    {id:'t-7',name:'本週內',max:7,color:'#CFAE1F',hideDone:false},
-    {id:'t-later',name:'還早',max:null,color:'#4E9A78',hideDone:false}],
-  noDate:{id:'t-none',name:'無期限',color:'#8C96A5',hideDone:false},
-  groupBy:'earliest',
-  ui:'tech-light'
-});
-const sampleTasks=()=>{const now=Date.now();let i=0;const T=(title,due,o={})=>({id:uid(),title,due,note:o.note||'',done:!!o.done,doneAt:o.done?now:null,created:now+(i++),trashed:false,trashedAt:null,sample:true,
-  subs:(o.subs||[]).map(s=>({id:uid(),title:s[0],due:s[1],note:s[2]||'',done:!!s[3]}))});
-  return [
-    T('回覆供應商報價確認',addDays(-1),{subs:[['比對三家報價',addDays(-2),'',true],['整理差異表給主管',addDays(0),'附上運費與交期差異']]}),
-    T('週會簡報更新',addDays(0),{note:'第 4 頁的進度表要換成最新數字'}),
-    T('送出採購申請單',addDays(2),{subs:[['取得主管簽核',addDays(1)],['上傳到系統',addDays(2),'記得附報價單 PDF']]}),
-    T('整理客戶需求清單',addDays(5)),
-    T('更新部門聯絡人名單',addDays(4),{done:true}),
-    T('教育訓練時數登錄',addDays(20),{subs:[['確認本年度已上時數',addDays(14)]]}),
-    T('季度檢討報告初稿',addDays(30),{done:true}),
-    T('研究新版排程工具',null),
-  ];
-};
-
-let state={tasks:[],settings:defaultSettings(),sample:false};
-let persisted=false;
+/* ---------- 資料：全部來自雲端（透過 api.js），畫面只保留目前這一份在記憶體 ---------- */
+const API=window.TodoAPI;
+const emptySettings=()=>({tiers:[],groupBy:'earliest',ui:null,userId:null});
+let state={tasks:[],settings:emptySettings(),loaded:false};
 const ui={open:new Set(),subNote:new Set(),doneOpen:new Set(),lastDay:todayStr()};
 
-let saveTimer=null;
-function save(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{if(persisted)await DB.set('state',state)},150);updateBadge()}
+/* 同步狀態燈號 */
+function setSync(s){const el=$('#sync');el.dataset.s=s;el.textContent={ok:'已同步',saving:'儲存中…',error:'連線異常'}[s]}
+
+/* 寫入雲端：依序送出（避免先後順序錯亂），失敗時提示並重新載入雲端資料 */
+let writeQueue=Promise.resolve(), pendingWrites=0, failNotified=false;
+function persist(fn,failMsg='儲存失敗'){
+  pendingWrites++;setSync('saving');
+  const p=writeQueue.then(fn);
+  writeQueue=p.catch(()=>{});
+  return p.then(()=>true,e=>{handleWriteError(e,failMsg);return false})
+    .finally(()=>{pendingWrites--;if(!pendingWrites&&$('#sync').dataset.s==='saving')setSync('ok')});
+}
+function handleWriteError(e,prefix){
+  if(e&&e.needsLogin){showLogin(e.message);return}
+  setSync('error');
+  if(!failNotified){failNotified=true;toast(`${prefix}：${e.message||e} 已重新載入雲端資料。`)}
+  writeQueue.then(()=>reload()).finally(()=>{failNotified=false});
+}
+
+/* 備註輸入中：停止打字 0.7 秒後才送出，離開欄位時立即送出 */
+const typingWrites=new Map();
+function debounceWrite(key,fn,ms=700){const x=typingWrites.get(key);if(x)clearTimeout(x.t);
+  typingWrites.set(key,{fn,t:setTimeout(()=>{typingWrites.delete(key);persist(fn)},ms)})}
+function flushWrite(key){const x=typingWrites.get(key);if(x){clearTimeout(x.t);typingWrites.delete(key);persist(x.fn)}}
+function flushAllWrites(){[...typingWrites.keys()].forEach(flushWrite)}
+
+/* 從雲端重新載入全部資料 */
+let loading=null;
+function reload(){
+  if(loading)return loading;
+  loading=(async()=>{
+    try{
+      const d=await API.loadAll();
+      state.tasks=d.tasks;state.settings=d.settings;state.loaded=true;
+      $('#banner').innerHTML='';applyUI();render();setSync('ok');
+    }catch(e){
+      if(e.needsLogin){showLogin(e.message);return}
+      setSync('error');
+      if(!state.loaded)$('#banner').innerHTML=`<div class="banner error"><span>無法載入資料：${esc(e.message)}</span><button class="btn primary" type="button" data-act="retry">重試</button></div>`;
+      else toast('無法更新資料：'+e.message);
+    }finally{loading=null}
+  })();
+  return loading;
+}
+
+/* 登入／登出畫面切換 */
+function showLogin(msg){
+  state={tasks:[],settings:emptySettings(),loaded:false};
+  render(); // 清掉畫面上的資料
+  $('#app').hidden=true;$('#login').hidden=false;
+  const err=$('#li-err');err.hidden=!msg;err.textContent=msg||'';
+  try{$('#li-email').value=$('#li-email').value||localStorage.getItem('todo-last-email')||''}catch(e){}
+  ($('#li-email').value?$('#li-pw'):$('#li-email')).focus();
+}
+function showApp(){$('#login').hidden=true;$('#app').hidden=false;render()}
+$('#loginform').addEventListener('submit',async e=>{
+  e.preventDefault();const btn=$('#li-btn'),err=$('#li-err');const email=$('#li-email').value.trim();
+  err.hidden=true;btn.disabled=true;btn.textContent='登入中…';
+  try{await API.signIn(email,$('#li-pw').value);$('#li-pw').value='';try{localStorage.setItem('todo-last-email',email)}catch(x){}
+    showApp();await reload()}
+  catch(x){err.textContent=x.message;err.hidden=false}
+  finally{btn.disabled=false;btn.textContent='登入'}
+});
+$('#btn-logout').addEventListener('click',async()=>{flushAllWrites();await writeQueue;await API.signOut();ui.open.clear();ui.doneOpen.clear();showLogin()});
 
 /* ---------- tiers ---------- */
 const sortedTiers=(tiers=state.settings.tiers)=>[...tiers].sort((a,b)=>(a.max==null?1e9:a.max)-(b.max==null?1e9:b.max));
@@ -612,8 +675,12 @@ function doneItemHTML(t){
 
 function render(){
   const ae=document.activeElement, focusId=ae&&ae.id, sel=ae&&'selectionStart' in ae?[ae.selectionStart,ae.selectionEnd]:null;
-  const t0=new Date();
   tick();
+  if(!state.loaded||!state.settings.tiers.length){
+    $('#groups').innerHTML='<div class="loading">正在從雲端載入…</div>';$('#summary').innerHTML='';
+    $('#done-list').innerHTML='';$('#trash-list').innerHTML='';$('#done-count').textContent='0';$('#trash-count').textContent='0';$('#btn-empty').hidden=true;
+    return;
+  }
   const live=state.tasks.filter(t=>!t.trashed);
   const tiers=sortedTiers();
   const buckets=new Map(tiers.map(t=>[t.id,[]])), doneArea=[];
@@ -634,8 +701,6 @@ function render(){
   // summary chips (undone only)
   $('#summary').innerHTML=tiers.map(tier=>{const n=buckets.get(tier.id).filter(t=>!t.done).length;return n?`<span class="chip" style="--c:${tier.color}">${esc(tier.name)} <b>${n}</b></span>`:''}).join('')
     ||'<span class="chip" style="--c:#4E9A78">目前沒有未完成的事項</span>';
-
-  $('#banner').innerHTML=state.sample?`<div class="banner"><span>目前顯示的是範例資料，方便你試用各項功能。</span><button class="btn primary" type="button" data-act="clearSample">清除範例，開始使用</button></div>`:'';
 
   doneArea.sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   $('#done-count').textContent=doneArea.length;
@@ -662,45 +727,64 @@ let toastTimer=null,undoFn=null;
 function toast(msg,undo){$('#toast-msg').textContent=msg;undoFn=undo||null;$('#toast-undo').hidden=!undo;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{$('#toast').hidden=true;undoFn=null},4500)}
 $('#toast-undo').addEventListener('click',()=>{if(undoFn)undoFn();$('#toast').hidden=true;undoFn=null});
 
-/* ---------- actions ---------- */
+/* ---------- actions：先更新畫面，再送到雲端 ---------- */
 const findT=id=>state.tasks.find(t=>t.id===id);
-const snapshot=()=>JSON.stringify(state.tasks);
-const restoreFrom=s=>()=>{state.tasks=JSON.parse(s);save();render()};
+function setDone(id,v){const t=findT(id);if(!t)return;t.done=v;t.doneAt=v?Date.now():null;if(!v)ui.doneOpen.delete(id);render();
+  persist(()=>API.updateTask(id,{done:t.done,doneAt:t.doneAt}))}
+function setTrashed(id,v){const t=findT(id);if(!t)return;t.trashed=v;t.trashedAt=v?Date.now():null;if(v){ui.open.delete(id);ui.doneOpen.delete(id)}render();
+  persist(()=>API.updateTask(id,{trashed:t.trashed,trashedAt:t.trashedAt}))}
+function putBack(tasks){ // 復原永久刪除：把整筆（含子任務）重新寫回雲端
+  for(const t of tasks)if(!findT(t.id))state.tasks.push(t);render();
+  persist(async()=>{for(const t of tasks)await API.createTask(t)},'復原失敗')}
+function patchTask(t,patch){Object.assign(t,patch);render();persist(()=>API.updateTask(t.id,patch))}
+function patchSub(s,patch){Object.assign(s,patch);render();persist(()=>API.updateSub(s.id,patch))}
 const actions={
-  toggle(t){const before=snapshot();t.done=!t.done;t.doneAt=t.done?Date.now():null;save();render();
-    if(t.done&&tierFor(daysLeft(groupDate(t))).hideDone)toast(`「${t.title}」已移到已完成區`,restoreFrom(before))},
+  toggle(t){const was=t.done;setDone(t.id,!was);
+    if(!was&&tierFor(daysLeft(groupDate(t))).hideDone)toast(`「${t.title}」已移到已完成區`,()=>setDone(t.id,was))},
   expand(t){ui.open.has(t.id)?ui.open.delete(t.id):ui.open.add(t.id);render()},
-  toggleSub(t,s){s.done=!s.done;save();render()},
+  toggleSub(t,s){const v=!s.done;patchSub(s,{done:v,doneAt:v?Date.now():null})},
   subNote(t,s){ui.subNote.has(s.id)?ui.subNote.delete(s.id):ui.subNote.add(s.id);render();if(ui.subNote.has(s.id))document.getElementById('sn-'+s.id)?.focus()},
-  delSub(t,s){const before=snapshot();t.subs=t.subs.filter(x=>x!==s);save();render();toast('已刪除子任務',restoreFrom(before))},
+  delSub(t,s){const idx=t.subs.indexOf(s);t.subs.splice(idx,1);render();persist(()=>API.deleteSub(s.id));
+    toast('已刪除子任務',()=>{const cur=findT(t.id);if(!cur)return;cur.subs.splice(Math.min(idx,cur.subs.length),0,s);render();persist(()=>API.createSub(cur.id,s),'復原失敗')})},
   addSub(t){const ti=document.getElementById('as-'+t.id),di=document.getElementById('asd-'+t.id);const v=ti.value.trim();if(!v){ti.focus();return}
-    t.subs.push({id:uid(),title:v,due:di.value||null,note:'',done:false});save();render();document.getElementById('as-'+t.id)?.focus()},
-  trash(t){const before=snapshot();t.trashed=true;t.trashedAt=Date.now();ui.open.delete(t.id);save();render();toast(`已把「${t.title}」丟到垃圾桶`,restoreFrom(before))},
-  undone(t){t.done=false;t.doneAt=null;ui.doneOpen.delete(t.id);save();render()},
+    const s={id:API.newId(),title:v,due:di.value||null,note:'',done:false,doneAt:null,sortOrder:Math.max(0,...t.subs.map(x=>x.sortOrder||0))+1};
+    t.subs.push(s);render();document.getElementById('as-'+t.id)?.focus();persist(()=>API.createSub(t.id,s))},
+  trash(t){setTrashed(t.id,true);toast(`已把「${t.title}」丟到垃圾桶`,()=>setTrashed(t.id,false))},
+  undone(t){setDone(t.id,false)},
   doneExpand(t){ui.doneOpen.has(t.id)?ui.doneOpen.delete(t.id):ui.doneOpen.add(t.id);render()},
-  restore(t){t.trashed=false;t.trashedAt=null;save();render()},
-  purge(t){const before=snapshot();state.tasks=state.tasks.filter(x=>x!==t);save();render();toast('已永久刪除',restoreFrom(before))},
+  restore(t){setTrashed(t.id,false)},
+  purge(t){state.tasks=state.tasks.filter(x=>x!==t);render();persist(()=>API.deleteTasks([t.id]),'刪除失敗');toast('已永久刪除',()=>putBack([t]))},
 };
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-edit],.ttl-edit'))return; // 標題本身：單擊不展開，雙擊才編輯
   const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act;
-  if(act==='hideToggle'){const id=b.closest('[data-tier]').dataset.tier;const tier=state.settings.tiers.find(t=>t.id===id);if(!tier)return;tier.hideDone=!tier.hideDone;save();render();return}
-  if(act==='clearSample'){state.tasks=state.tasks.filter(t=>!t.sample);state.sample=false;ui.open.clear();save();render();return}
-  if(act==='emptyTrash'){e.preventDefault();const before=snapshot();const n=state.tasks.filter(t=>t.trashed).length;state.tasks=state.tasks.filter(t=>!t.trashed);save();render();toast(`已永久刪除 ${n} 筆`,restoreFrom(before));return}
+  if(act==='retry'){$('#banner').innerHTML='';reload();return}
+  if(act==='hideToggle'){const id=b.closest('[data-tier]').dataset.tier;const tier=state.settings.tiers.find(t=>t.id===id);if(!tier)return;
+    tier.hideDone=!tier.hideDone;render();persist(()=>API.updateTier(id,{hideDone:tier.hideDone}));return}
+  if(act==='emptyTrash'){e.preventDefault();const gone=state.tasks.filter(t=>t.trashed);if(!gone.length)return;
+    state.tasks=state.tasks.filter(t=>!t.trashed);render();persist(()=>API.deleteTasks(gone.map(t=>t.id)),'刪除失敗');
+    toast(`已永久刪除 ${gone.length} 筆`,()=>putBack(gone));return}
   const host=b.closest('[data-id]');if(!host)return;const t=findT(host.dataset.id);if(!t)return;
   const sh=b.closest('[data-sid]');const s=sh?t.subs.find(x=>x.id===sh.dataset.sid):null;
   actions[act]?.(t,s);
 });
-// field edits: commit on change (no re-render while typing)
+// 欄位修改：離開欄位（change）時送出
 document.addEventListener('change',e=>{
   const el=e.target,host=el.closest('[data-id]');if(!host)return;const t=findT(host.dataset.id);if(!t)return;
-  if(el.dataset.f){const f=el.dataset.f;if(f==='title'){const v=el.value.trim();if(!v){el.value=t.title;return}t.title=v}else if(f==='due')t.due=el.value||null;else t.note=el.value;save();render()}
-  else if(el.dataset.sf){const s=t.subs.find(x=>x.id===el.closest('[data-sid]').dataset.sid);const f=el.dataset.sf;
-    if(f==='title'){const v=el.value.trim();if(!v){el.value=s.title;return}s.title=v}else if(f==='due')s.due=el.value||null;else s.note=el.value;save();render()}
+  if(el.dataset.f){const f=el.dataset.f;
+    if(f==='title'){const v=el.value.trim();if(!v){el.value=t.title;return}if(v!==t.title)patchTask(t,{title:v})}
+    else if(f==='due'){const v=el.value||null;if(v!==t.due)patchTask(t,{due:v})}
+    else flushWrite('tn-'+t.id)}
+  else if(el.dataset.sf){const s=t.subs.find(x=>x.id===el.closest('[data-sid]').dataset.sid);if(!s)return;const f=el.dataset.sf;
+    if(f==='title'){const v=el.value.trim();if(!v){el.value=s.title;return}if(v!==s.title)patchSub(s,{title:v})}
+    else if(f==='due'){const v=el.value||null;if(v!==s.due)patchSub(s,{due:v})}
+    else flushWrite('sn-'+s.id)}
 });
-document.addEventListener('input',e=>{ // notes autosave while typing
+document.addEventListener('input',e=>{ // 備註：打字時先記在畫面，停頓後送出
   const el=e.target;if(el.tagName!=='TEXTAREA')return;const host=el.closest('[data-id]');if(!host)return;const t=findT(host.dataset.id);if(!t)return;
-  if(el.dataset.f==='note'){t.note=el.value;save()}else if(el.dataset.sf==='note'){const s=t.subs.find(x=>x.id===el.closest('[data-sid]').dataset.sid);s.note=el.value;save()}
+  if(el.dataset.f==='note'){t.note=el.value;debounceWrite('tn-'+t.id,()=>API.updateTask(t.id,{note:t.note}))}
+  else if(el.dataset.sf==='note'){const s=t.subs.find(x=>x.id===el.closest('[data-sid]').dataset.sid);if(!s)return;s.note=el.value;
+    debounceWrite('sn-'+s.id,()=>API.updateSub(s.id,{note:s.note}))}
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.matches('[data-addsub]')){e.preventDefault();const t=findT(e.target.closest('[data-id]').dataset.id);actions.addSub(t)}
@@ -714,7 +798,7 @@ function editTitle(span){
   span.replaceWith(inp);inp.focus();inp.select();
   let finished=false;
   const finish=commit=>{if(finished)return;finished=true;const v=inp.value.trim();
-    if(commit&&v&&v!==t.title){t.title=v;save()}render()};
+    if(commit&&v&&v!==t.title)patchTask(t,{title:v});else render()};
   inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();finish(true)}else if(e.key==='Escape'){e.preventDefault();finish(false)}});
   inp.addEventListener('blur',()=>finish(true));
 }
@@ -728,8 +812,9 @@ document.addEventListener('keydown',e=>{ // 鍵盤：在任務列上按 Enter �
 /* quick add */
 $('#quick').addEventListener('click',e=>{const b=e.target.closest('[data-q]');if(!b)return;$('#add-due').value=b.dataset.q===''?'':addDays(+b.dataset.q);$('#add-title').focus()});
 $('#addform').addEventListener('submit',e=>{e.preventDefault();const v=$('#add-title').value.trim();if(!v){$('#add-title').focus();return}
-  state.tasks.push({id:uid(),title:v,due:$('#add-due').value||null,note:'',done:false,doneAt:null,created:Date.now(),trashed:false,trashedAt:null,subs:[]});
-  $('#add-title').value='';save();render();$('#add-title').focus()});
+  if(!state.loaded)return;
+  const t={id:API.newId(),title:v,due:$('#add-due').value||null,note:'',done:false,doneAt:null,created:Date.now(),trashed:false,trashedAt:null,subs:[]};
+  state.tasks.push(t);$('#add-title').value='';render();$('#add-title').focus();persist(()=>API.createTask(t),'新增失敗')});
 
 /* drawers keep their open state across renders natively (they are outside #groups) */
 
@@ -755,40 +840,57 @@ $('#tier-table').addEventListener('change',e=>{const el=e.target;if(el.dataset.k
   const v=parseInt(el.value,10);if(Number.isFinite(v))t.max=v;drawTiers();document.getElementById('tm-'+t.id)?.focus()});
 $('#tier-table').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;draft.tiers=draft.tiers.filter(t=>t.id!==b.dataset.del);drawTiers()});
 $('#tier-add').addEventListener('click',()=>{const fin=draft.tiers.filter(t=>t.max!=null).map(t=>t.max);const m=(fin.length?Math.max(...fin):0)+7;
-  const pal=['#7A5CC2','#2E8FB8','#B5527F','#5C7A2E','#C2703A'];draft.tiers.push({id:'t-'+uid(),name:'新層級',max:m,color:pal[draft.tiers.length%pal.length],hideDone:false});drawTiers()});
-$('#tier-reset').addEventListener('click',()=>{draft=defaultSettings();drawTiers();$('#tier-err').hidden=true});
+  const pal=['#7A5CC2','#2E8FB8','#B5527F','#5C7A2E','#C2703A'];draft.tiers.push({id:API.newId(),name:'新層級',max:m,color:pal[draft.tiers.length%pal.length],hideDone:false});drawTiers()});
+$('#tier-reset').addEventListener('click',()=>{draft.tiers=API.defaultTiers();draft.groupBy='earliest';drawTiers();$('#tier-err').hidden=true});
 $('#tier-save').addEventListener('click',()=>{
   draft.groupBy=document.querySelector('input[name=groupBy]:checked')?.value||'earliest';
   const err=$('#tier-err');const maxes=draft.tiers.filter(t=>t.max!=null).map(t=>t.max);
   if(draft.tiers.some(t=>!t.name.trim())){err.textContent='每個層級都需要名稱。';err.hidden=false;return}
   if(new Set(maxes).size!==maxes.length){err.textContent='有兩個層級的天數上限相同，請改成不同數字。';err.hidden=false;return}
-  err.hidden=true;draft.tiers.forEach(t=>t.name=t.name.trim());draft.ui=state.settings.ui;state.settings=draft;draft=null;save();render();dlgS.close();toast('層級設定已儲存')});
-$('#btn-settings').addEventListener('click',()=>{draft=JSON.parse(JSON.stringify(state.settings));$('#tier-err').hidden=true;drawTiers();dlgS.showModal()});
+  err.hidden=true;
+  const prev=state.settings.tiers, next=draft.tiers.map(t=>({...t,name:t.name.trim()})), groupBy=draft.groupBy;
+  state.settings.tiers=next;state.settings.groupBy=groupBy;draft=null;render();dlgS.close();
+  persist(async()=>{await API.saveTiers(next,prev);await API.updateSettings(state.settings.userId,{groupBy})},'層級設定儲存失敗')
+    .then(ok=>{if(ok)toast('層級設定已儲存')})});
+$('#btn-settings').addEventListener('click',()=>{if(!state.loaded)return;draft=JSON.parse(JSON.stringify({tiers:state.settings.tiers,groupBy:state.settings.groupBy}));$('#tier-err').hidden=true;drawTiers();dlgS.showModal()});
 
 /* ---------- backup dialog ---------- */
 const dlgB=$('#dlg-backup');
-const backupJSON=()=>JSON.stringify({app:'todo-board',version:1,exportedAt:new Date().toISOString(),state},null,2);
+const backupJSON=()=>JSON.stringify({app:'todo-board',version:2,exportedAt:new Date().toISOString(),
+  tasks:state.tasks,settings:{tiers:state.settings.tiers,groupBy:state.settings.groupBy,ui:state.settings.ui}},null,2);
 $('#btn-backup').addEventListener('click',()=>{$('#bk-msg').textContent='';$('#bk-import-text').value='';$('#bk-file').value='';dlgB.showModal()});
 $('#bk-download').addEventListener('click',()=>{try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([backupJSON()],{type:'application/json'}));
   a.download=`待辦備份-${todayStr()}.json`;document.body.appendChild(a);a.click();a.remove();$('#bk-msg').textContent='已下載備份檔。若沒有出現下載，請改用「複製備份內容」。'}catch(e){$('#bk-msg').textContent='這個環境無法下載檔案，請改用「複製備份內容」。'}});
 $('#bk-copy').addEventListener('click',()=>{const txt=backupJSON();navigator.clipboard?.writeText(txt).then(()=>{$('#bk-msg').textContent='已複製，可以貼到記事本存檔。'})
   .catch(()=>{const ta=$('#bk-import-text');ta.value=txt;ta.select();$('#bk-msg').textContent='無法自動複製，內容已放進下方欄位並選取，請按 Ctrl+C。'})});
 $('#bk-file').addEventListener('change',async e=>{const f=e.target.files[0];if(f)$('#bk-import-text').value=await f.text()});
-$('#bk-import').addEventListener('click',()=>{try{const o=JSON.parse($('#bk-import-text').value);const s=o.state||o;
-  if(!Array.isArray(s.tasks)||!s.settings||!Array.isArray(s.settings.tiers))throw 0;state={tasks:s.tasks,settings:s.settings,sample:false};ui.open.clear();save();applyUI();render();dlgB.close();toast(`已還原 ${s.tasks.length} 筆待辦`)}
-  catch(e){$('#bk-msg').textContent='讀不懂這份內容。請確認是從這個程式下載或複製的備份。'}});
+$('#bk-import').addEventListener('click',()=>{
+  let list;
+  try{const o=JSON.parse($('#bk-import-text').value);list=(o.state||o).tasks;if(!Array.isArray(list))throw 0}
+  catch(e){$('#bk-msg').textContent='讀不懂這份內容。請確認是從這個程式下載或複製的備份。';return}
+  // 匯入一律產生新的編號，新增到雲端，不覆蓋現有資料；舊版的範例資料略過
+  const now=Date.now();
+  const tasks=list.filter(t=>t&&t.title&&!t.sample).map((t,i)=>({id:API.newId(),title:String(t.title),due:t.due||null,note:t.note||'',
+    done:!!t.done,doneAt:t.done?(t.doneAt||now):null,trashed:!!t.trashed,trashedAt:t.trashed?(t.trashedAt||now):null,created:t.created||now+i,
+    subs:(t.subs||[]).filter(s=>s&&s.title).map((s,j)=>({id:API.newId(),title:String(s.title),due:s.due||null,note:s.note||'',done:!!s.done,doneAt:s.done?(s.doneAt||now):null,sortOrder:j+1}))}));
+  if(!tasks.length){$('#bk-msg').textContent='這份備份裡沒有可以匯入的待辦事項。';return}
+  dlgB.close();state.tasks.push(...tasks);render();
+  persist(async()=>{for(const t of tasks)await API.createTask(t)},'匯入失敗').then(ok=>{if(ok)toast(`已匯入 ${tasks.length} 筆待辦到雲端`)});
+});
 document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 
 /* ---------- 介面風格切換 ---------- */
 const THEME_COLOR={classic:'#2C5BBF','tech-light':'#2C5BBF','tech-dark':'#060A11'};
 function applyUI(){
-  const u=THEME_COLOR[state.settings.ui]?state.settings.ui:'tech-light';
+  const want=state.settings.ui||document.documentElement.dataset.ui;
+  const u=THEME_COLOR[want]?want:'tech-light';
   document.documentElement.dataset.ui=u;
   try{localStorage.setItem('todo-ui',u)}catch(e){}
   document.querySelector('meta[name=theme-color]')?.setAttribute('content',THEME_COLOR[u]);
   document.querySelectorAll('[data-ui-set]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.uiSet===u));
 }
-$('#uiswitch').addEventListener('click',e=>{const b=e.target.closest('[data-ui-set]');if(!b)return;state.settings.ui=b.dataset.uiSet;save();applyUI()});
+$('#uiswitch').addEventListener('click',e=>{const b=e.target.closest('[data-ui-set]');if(!b||!state.loaded)return;const u=b.dataset.uiSet;if(u===state.settings.ui)return;
+  state.settings.ui=u;applyUI();persist(()=>API.updateSettings(state.settings.userId,{ui:u}))});
 
 /* ---------- ToDo 標題：四個字輪流、隨機動作 ---------- */
 (()=>{
@@ -864,18 +966,21 @@ setInterval(tick,1000);
 /* ---------- day rollover ---------- */
 function checkDay(){const d=todayStr();if(d!==ui.lastDay){ui.lastDay=d;render()}}
 setInterval(checkDay,60000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDay()});
+
+/* ---------- 自動更新：切回視窗時、以及每 60 秒，從雲端讀取最新資料（手機改的會同步過來） ---------- */
+function canAutoRefresh(){
+  const ae=document.activeElement;
+  return state.loaded&&API.isLoggedIn&&!document.hidden&&!pendingWrites&&!typingWrites.size&&!loading
+    &&!document.querySelector('dialog[open]')&&!(ae&&ae.matches&&ae.matches('input,textarea,select'));
+}
+setInterval(()=>{if(canAutoRefresh())reload()},60000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){flushAllWrites();return}checkDay();if(canAutoRefresh())reload()});
+window.addEventListener('pagehide',flushAllWrites);
 
 /* ---------- boot ---------- */
 (async()=>{
-  persisted=await DB.open();
-  let saved=persisted?await DB.get('state'):undefined;
-  if(saved&&Array.isArray(saved.tasks))state=saved;
-  else{state={tasks:sampleTasks(),settings:defaultSettings(),sample:true};state.settings.tiers.find(t=>t.id==='t-later').hideDone=true;if(persisted)DB.set('state',state)}
-  try{navigator.storage?.persist?.()}catch(e){}
   applyUI();
-  render();
-  if(!persisted)toast('這個環境無法保存資料，關閉後內容會消失');
+  if(API.isLoggedIn){showApp();await reload()}else showLogin();
   if(document.querySelector('link[rel=manifest]')&&'serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 })();
 })();
