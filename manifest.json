@@ -1,6 +1,6 @@
 {
-  "name": "待辦看板",
-  "short_name": "待辦看板",
+  "name": "ToDo",
+  "short_name": "ToDo",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -8,7 +8,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
-<title>待辦看板</title>
+<title>ToDo</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;600&display=swap">
@@ -20,16 +20,16 @@
   --accent:#2C5BBF; --accent-fg:#FFFFFF; --danger:#C2412F;
   --f-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif;
   --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
-  --r:10px;
+  --r:10px; --tint:24%;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#12161D; --surface:#1A2029; --sunk:#232B36; --line:#2F3946;
   --fg:#E6EBF2; --muted:#9AA6B6; --faint:#6E7A8A;
-  --accent:#7FA3F0; --accent-fg:#0E1622; --danger:#F07A66; color-scheme:dark}}
+  --accent:#7FA3F0; --accent-fg:#0E1622; --danger:#F07A66; --tint:20%; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#12161D; --surface:#1A2029; --sunk:#232B36; --line:#2F3946;
   --fg:#E6EBF2; --muted:#9AA6B6; --faint:#6E7A8A;
-  --accent:#7FA3F0; --accent-fg:#0E1622; --danger:#F07A66; color-scheme:dark}
+  --accent:#7FA3F0; --accent-fg:#0E1622; --danger:#F07A66; --tint:20%; color-scheme:dark}
 html,body{background:var(--bg)}
 body{color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
@@ -52,7 +52,6 @@ h1{font-size:24px;font-weight:700;margin:0;letter-spacing:.02em}
 .chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:3px 10px;border-radius:999px;
   background:color-mix(in srgb,var(--c) 16%,var(--surface));color:color-mix(in srgb,var(--c) 65%,var(--fg))}
 .chip b{font-family:var(--f-mono);font-weight:600}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
 
 .banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:var(--r);
   background:color-mix(in srgb,var(--accent) 10%,var(--surface));border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--line));font-size:14px}
@@ -67,16 +66,15 @@ h1{font-size:24px;font-weight:700;margin:0;letter-spacing:.02em}
 .quick button:hover{color:var(--fg)}
 
 /* groups */
-.group{display:flex;flex-direction:column;gap:6px}
+.group{display:flex;flex-direction:column;gap:8px;padding:10px 12px 12px;border-radius:14px;
+  background:color-mix(in srgb,var(--c) var(--tint),var(--bg));border:1px solid color-mix(in srgb,var(--c) 35%,transparent)}
+.group.empty{padding-block:6px;background:color-mix(in srgb,var(--c) calc(var(--tint) / 2),var(--bg))}
 .ghead{display:flex;align-items:center;gap:10px;padding:4px 2px;flex-wrap:wrap}
-.ghead h2{font-size:15px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
-.ghead .dot{width:10px;height:10px}
-.ghead .range{font-size:12px;color:var(--muted)}
-.ghead .count{font-family:var(--f-mono);font-size:12px;color:var(--muted);background:var(--sunk);border-radius:6px;padding:0 7px}
+.ghead h2{font-size:15px;font-weight:700;margin:0;color:color-mix(in srgb,var(--c) 55%,var(--fg))}
+.ghead .range{font-size:12px;color:color-mix(in srgb,var(--c) 30%,var(--muted))}
+.ghead .count{font-family:var(--f-mono);font-size:12px;color:var(--fg);background:color-mix(in srgb,var(--surface) 70%,transparent);border-radius:6px;padding:0 7px}
 .ghead .hide{margin-left:auto;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 10px;background:var(--surface)}
 .ghead .hide[aria-pressed="true"]{color:var(--fg);border-color:color-mix(in srgb,var(--c) 60%,var(--line))}
-.group.empty .ghead{opacity:.55}
-.group.empty .ghead:hover{opacity:1}
 .groups{display:flex;flex-direction:column;gap:16px;width:100%}
 .list{display:flex;flex-direction:column;gap:6px}
 
@@ -84,13 +82,16 @@ h1{font-size:24px;font-weight:700;margin:0;letter-spacing:.02em}
 .task.done{opacity:.45}
 .task.done .ttl-text{text-decoration:line-through}
 .task.open{opacity:1;border-color:color-mix(in srgb,var(--accent) 50%,var(--line));box-shadow:0 4px 18px -10px rgba(20,40,80,.35)}
-.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 12px}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 12px;cursor:pointer}
 .check{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--faint);display:grid;place-items:center;flex:none;background:var(--surface)}
 .check svg{width:13px;height:13px;opacity:0}
 .check[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
 .check[aria-pressed="true"] svg{opacity:1}
-.ttl{text-align:left;min-width:0;display:flex;flex-direction:column}
-.ttl-text{font-weight:500;overflow-wrap:anywhere}
+.ttl{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.ttl-text{font-weight:500;overflow-wrap:anywhere;cursor:text;border-radius:4px}
+.ttl-text:hover{background:var(--sunk)}
+.ttl-edit{font:inherit;font-weight:500;width:100%;box-sizing:border-box;border:1px solid var(--accent);border-radius:6px;padding:2px 6px;background:var(--bg)}
+.subs-mini{cursor:pointer}
 .ttl-meta{font-size:12px;color:var(--muted)}
 .due{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
 .pill{font-size:12px;font-weight:500;padding:1px 9px;border-radius:999px;white-space:nowrap;
@@ -100,6 +101,7 @@ h1{font-size:24px;font-weight:700;margin:0;letter-spacing:.02em}
 .subs-mini{list-style:none;margin:0;padding:0 12px 9px 42px;display:flex;flex-direction:column;gap:3px}
 .subs-mini li{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 .subs-mini li span.t{flex:1;min-width:0;overflow-wrap:anywhere}
+.subs-mini li::before{content:"–";color:var(--faint)}
 .subs-mini .pill{font-size:11px;padding:0 7px}
 
 .detail{border-top:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:12px}
@@ -108,7 +110,6 @@ h1{font-size:24px;font-weight:700;margin:0;letter-spacing:.02em}
 .text-in,textarea{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 10px;width:100%;box-sizing:border-box}
 textarea{resize:vertical;min-height:56px;font-size:14px}
 .frow{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
-.frow .field:first-child{flex:1 1 260px;min-width:0}
 .sublist{display:flex;flex-direction:column;gap:6px}
 .sub{background:var(--bg);border-radius:8px;padding:8px}
 .sub.done .sub-title{text-decoration:line-through;opacity:.5}
@@ -178,7 +179,7 @@ dialog::backdrop{background:rgba(10,15,25,.45)}
 <div class="wrap">
   <header>
     <div>
-      <h1>待辦看板</h1>
+      <h1>ToDo</h1>
       <div class="today mono" id="today"></div>
     </div>
     <div class="tools">
@@ -341,18 +342,17 @@ function taskHTML(t){
   if(t.subs.length)meta.push(`子任務 ${doneSubs}/${t.subs.length}`);
   if(t.note)meta.push('有備註');
   let h=`<article class="task${t.done?' done':''}${open?' open':''}" data-id="${t.id}">
-  <div class="row">
+  <div class="row" data-act="expand" role="button" tabindex="0" aria-expanded="${open}" title="點一下展開／收合">
     <button class="check" type="button" data-act="toggle" aria-pressed="${t.done}" aria-label="標記完成">${CHECK}</button>
-    <button class="ttl" type="button" data-act="expand" aria-expanded="${open}"><span class="ttl-text">${esc(t.title)}</span>${meta.length?`<span class="ttl-meta">${meta.join(' · ')}</span>`:''}</button>
+    <div class="ttl"><span class="ttl-text" data-edit title="點兩下編輯標題">${esc(t.title)}</span>${meta.length?`<span class="ttl-meta">${meta.join(' · ')}</span>`:''}</div>
     <span class="due"><span class="pill" style="--c:${colorFor(d)}">${dayText(d)}</span>${t.due?`<span class="dstr mono">${shortDate(t.due)}</span>`:''}</span>
   </div>`;
   if(!open){
     const pending=t.subs.filter(s=>!s.done);
-    if(pending.length&&!t.done)h+=`<ul class="subs-mini">${pending.map(s=>`<li><span class="dot" style="--c:${colorFor(daysLeft(s.due))}"></span><span class="t">${esc(s.title)}</span>${s.due?pill(s.due):''}</li>`).join('')}</ul>`;
+    if(pending.length&&!t.done)h+=`<ul class="subs-mini" data-act="expand">${pending.map(s=>`<li><span class="t">${esc(s.title)}</span>${s.due?pill(s.due):''}</li>`).join('')}</ul>`;
   }else{
     h+=`<div class="detail">
       <div class="frow">
-        <div class="field"><label for="tt-${t.id}">標題</label><input class="text-in" id="tt-${t.id}" data-f="title" value="${esc(t.title)}"></div>
         <div class="field"><label for="td-${t.id}">到期日</label><input type="date" class="date-in" id="td-${t.id}" data-f="due" value="${t.due||''}"></div>
       </div>
       <div class="field"><label for="tn-${t.id}">備註</label><textarea id="tn-${t.id}" data-f="note" placeholder="可留空">${esc(t.note)}</textarea></div>
@@ -400,14 +400,14 @@ function render(){
     const range=tier===state.settings.noDate?'沒有設定到期日':rangeText(state.settings.tiers,idx);
     const undone=items.filter(t=>!t.done).length;
     return `<section class="group${items.length?'':' empty'}" style="--c:${tier.color}" data-tier="${tier.id}">
-      <div class="ghead"><h2><span class="dot"></span>${esc(tier.name)}</h2><span class="range">${esc(range)}</span><span class="count">${undone}</span>
+      <div class="ghead"><h2>${esc(tier.name)}</h2><span class="range">${esc(range)}</span><span class="count">${undone}</span>
       <button class="hide" type="button" data-act="hideToggle" aria-pressed="${tier.hideDone}" title="切換：完成的項目要留在這組，還是移到已完成區">${tier.hideDone?'完成後移到已完成':'完成後留在清單'}</button></div>
       ${items.length?`<div class="list">${items.map(taskHTML).join('')}</div>`:''}
     </section>`}).join('');
 
   // summary chips (undone only)
-  $('#summary').innerHTML=tiers.map(tier=>{const n=buckets.get(tier.id).filter(t=>!t.done).length;return n?`<span class="chip" style="--c:${tier.color}"><span class="dot"></span>${esc(tier.name)} <b>${n}</b></span>`:''}).join('')
-    ||'<span class="chip" style="--c:#4E9A78"><span class="dot"></span>目前沒有未完成的事項</span>';
+  $('#summary').innerHTML=tiers.map(tier=>{const n=buckets.get(tier.id).filter(t=>!t.done).length;return n?`<span class="chip" style="--c:${tier.color}">${esc(tier.name)} <b>${n}</b></span>`:''}).join('')
+    ||'<span class="chip" style="--c:#4E9A78">目前沒有未完成的事項</span>';
 
   $('#banner').innerHTML=state.sample?`<div class="banner"><span>目前顯示的是範例資料，方便你試用各項功能。</span><button class="btn primary" type="button" data-act="clearSample">清除範例，開始使用</button></div>`:'';
 
@@ -427,7 +427,7 @@ function render(){
 
 function updateBadge(){
   const n=state.tasks.filter(t=>!t.trashed&&!t.done&&(d=>d!=null&&d<=0)(daysLeft(groupDate(t)))).length;
-  document.title=n?`(${n}) 待辦看板`:'待辦看板';
+  document.title=n?`(${n}) ToDo`:'ToDo';
   try{if('setAppBadge' in navigator){n?navigator.setAppBadge(n).catch(()=>{}):navigator.clearAppBadge().catch(()=>{})}}catch(e){}
 }
 
@@ -455,6 +455,7 @@ const actions={
   purge(t){const before=snapshot();state.tasks=state.tasks.filter(x=>x!==t);save();render();toast('已永久刪除',restoreFrom(before))},
 };
 document.addEventListener('click',e=>{
+  if(e.target.closest('[data-edit],.ttl-edit'))return; // 標題本身：單擊不展開，雙擊才編輯
   const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act;
   if(act==='hideToggle'){const id=b.closest('[data-tier]').dataset.tier;const tier=id===state.settings.noDate.id?state.settings.noDate:state.settings.tiers.find(t=>t.id===id);tier.hideDone=!tier.hideDone;save();render();return}
   if(act==='clearSample'){state.tasks=state.tasks.filter(t=>!t.sample);state.sample=false;ui.open.clear();save();render();return}
@@ -477,6 +478,24 @@ document.addEventListener('input',e=>{ // notes autosave while typing
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&e.target.matches('[data-addsub]')){e.preventDefault();const t=findT(e.target.closest('[data-id]').dataset.id);actions.addSub(t)}
   if(e.key==='Enter'&&e.target.matches('.sub-title,.text-in[data-f="title"]')){e.target.blur()}
+});
+
+/* inline title edit: double-click the title text */
+function editTitle(span){
+  const host=span.closest('[data-id]');const t=findT(host.dataset.id);if(!t)return;
+  const inp=document.createElement('input');inp.className='ttl-edit';inp.value=t.title;inp.setAttribute('aria-label','編輯標題');
+  span.replaceWith(inp);inp.focus();inp.select();
+  let finished=false;
+  const finish=commit=>{if(finished)return;finished=true;const v=inp.value.trim();
+    if(commit&&v&&v!==t.title){t.title=v;save()}render()};
+  inp.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter'){e.preventDefault();finish(true)}else if(e.key==='Escape'){e.preventDefault();finish(false)}});
+  inp.addEventListener('blur',()=>finish(true));
+}
+document.addEventListener('dblclick',e=>{const span=e.target.closest('[data-edit]');if(!span)return;e.preventDefault();editTitle(span)});
+document.addEventListener('keydown',e=>{ // 鍵盤：在任務列上按 Enter 展開、F2 編輯標題
+  const row=e.target.closest&&e.target.closest('.row[data-act=expand]');if(!row||e.target!==row)return;
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();row.click()}
+  else if(e.key==='F2'){e.preventDefault();const sp=row.querySelector('[data-edit]');if(sp)editTitle(sp)}
 });
 
 /* quick add */
