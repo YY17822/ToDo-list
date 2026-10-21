@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2C5BBF">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>待辦看板</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one working column — header summary, quick add, urgency groups (most urgent first), then 已完成 and 垃圾桶 drawers */
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --sunk:#E9EDF2; --line:#D8DEE6;
+  --fg:#1B2330; --muted:#5F6B7B; --faint:#8E99A8;
+  --accent:#2C5BBF; --accent-fg:#FFFFFF; --danger:#C2412F;
+  --f-body:"Noto Sans TC","Microsoft JhengHei","PingFang TC",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#12161D; --surface:#1A2029; --sunk:#232B36; --line:#2F3946;
+  --fg:#E6EBF2; --muted:#9AA6B6; --faint:#6E7A8A;
+  --accent:#7FA3F0; --accent-fg:#0E1622; --danger:#F07A66; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12161D; --surface:#1A2029; --sunk:#232B36; --line:#2F3946;
+  --fg:#E6EBF2; --muted:#9AA6B6; --faint:#6E7A8A;
+  --accent:#7FA3F0; --accent-fg:#0E1622; --danger:#F07A66; color-scheme:dark}
+html,body{background:var(--bg)}
+body{color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 80px}
+.wrap{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* header */
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{font-size:24px;font-weight:700;margin:0;letter-spacing:.02em}
+.today{color:var(--muted);font-size:13px;margin-top:2px}
+.tools{display:flex;gap:6px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--fg)}
+.btn:hover{border-color:var(--faint)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:500}
+.btn.danger{color:var(--danger)}
+.summary{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:3px 10px;border-radius:999px;
+  background:color-mix(in srgb,var(--c) 16%,var(--surface));color:color-mix(in srgb,var(--c) 65%,var(--fg))}
+.chip b{font-family:var(--f-mono);font-weight:600}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+
+.banner{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:var(--r);
+  background:color-mix(in srgb,var(--accent) 10%,var(--surface));border:1px dashed color-mix(in srgb,var(--accent) 45%,var(--line));font-size:14px}
+
+/* quick add */
+.add{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.add input[type=text]{flex:1 1 240px;min-width:0;border:0;background:transparent;padding:6px 4px;font-size:16px}
+.add input[type=text]:focus{outline:none}
+.date-in{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 8px;font-family:var(--f-mono);font-size:13px}
+.quick{display:flex;gap:4px;flex-wrap:wrap}
+.quick button{font-size:12px;padding:3px 8px;border-radius:6px;background:var(--sunk);color:var(--muted)}
+.quick button:hover{color:var(--fg)}
+
+/* groups */
+.group{display:flex;flex-direction:column;gap:6px}
+.ghead{display:flex;align-items:center;gap:10px;padding:4px 2px;flex-wrap:wrap}
+.ghead h2{font-size:15px;font-weight:700;margin:0;display:flex;align-items:center;gap:8px}
+.ghead .dot{width:10px;height:10px}
+.ghead .range{font-size:12px;color:var(--muted)}
+.ghead .count{font-family:var(--f-mono);font-size:12px;color:var(--muted);background:var(--sunk);border-radius:6px;padding:0 7px}
+.ghead .hide{margin-left:auto;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 10px;background:var(--surface)}
+.ghead .hide[aria-pressed="true"]{color:var(--fg);border-color:color-mix(in srgb,var(--c) 60%,var(--line))}
+.group.empty .ghead{opacity:.55}
+.group.empty .ghead:hover{opacity:1}
+.groups{display:flex;flex-direction:column;gap:16px;width:100%}
+.list{display:flex;flex-direction:column;gap:6px}
+
+.task{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);transition:opacity .2s}
+.task.done{opacity:.45}
+.task.done .ttl-text{text-decoration:line-through}
+.task.open{opacity:1;border-color:color-mix(in srgb,var(--accent) 50%,var(--line));box-shadow:0 4px 18px -10px rgba(20,40,80,.35)}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 12px}
+.check{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--faint);display:grid;place-items:center;flex:none;background:var(--surface)}
+.check svg{width:13px;height:13px;opacity:0}
+.check[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.check[aria-pressed="true"] svg{opacity:1}
+.ttl{text-align:left;min-width:0;display:flex;flex-direction:column}
+.ttl-text{font-weight:500;overflow-wrap:anywhere}
+.ttl-meta{font-size:12px;color:var(--muted)}
+.due{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.pill{font-size:12px;font-weight:500;padding:1px 9px;border-radius:999px;white-space:nowrap;
+  background:color-mix(in srgb,var(--c) 18%,var(--surface));color:color-mix(in srgb,var(--c) 70%,var(--fg))}
+.dstr{font-size:11px;color:var(--faint)}
+
+.subs-mini{list-style:none;margin:0;padding:0 12px 9px 42px;display:flex;flex-direction:column;gap:3px}
+.subs-mini li{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.subs-mini li span.t{flex:1;min-width:0;overflow-wrap:anywhere}
+.subs-mini .pill{font-size:11px;padding:0 7px}
+
+.detail{border-top:1px solid var(--line);padding:12px;display:flex;flex-direction:column;gap:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field>label,.lbl{font-size:12px;color:var(--muted);letter-spacing:.04em}
+.text-in,textarea{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 10px;width:100%;box-sizing:border-box}
+textarea{resize:vertical;min-height:56px;font-size:14px}
+.frow{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end}
+.frow .field:first-child{flex:1 1 260px;min-width:0}
+.sublist{display:flex;flex-direction:column;gap:6px}
+.sub{background:var(--bg);border-radius:8px;padding:8px}
+.sub.done .sub-title{text-decoration:line-through;opacity:.5}
+.sub.done>.subrow>.check,.sub.done .pill{opacity:.5}
+.subrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.subrow .sub-title{flex:1 1 180px;min-width:0;border:0;background:transparent;padding:4px 2px;font-size:14px}
+.subrow .sub-title:focus{outline:none;border-bottom:1px solid var(--accent)}
+.mini{font-size:12px;color:var(--muted);padding:3px 8px;border-radius:6px}
+.mini:hover{background:var(--sunk);color:var(--fg)}
+.mini.has{color:var(--accent);font-weight:500}
+.sub textarea{margin-top:6px;background:var(--surface)}
+.addsub{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.addsub .text-in{flex:1 1 200px;width:auto;min-width:0}
+.dfoot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+
+/* drawers */
+details.drawer{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+details.drawer>summary{list-style:none;cursor:pointer;padding:10px 14px;display:flex;align-items:center;gap:10px;font-weight:700}
+details.drawer>summary::-webkit-details-marker{display:none}
+details.drawer>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+details.drawer[open]>summary::before{transform:rotate(45deg)}
+details.drawer .count{font-family:var(--f-mono);font-size:12px;color:var(--muted);background:var(--sunk);border-radius:6px;padding:0 7px;font-weight:500}
+details.drawer .sact{margin-left:auto}
+.dlist{padding:0 14px 12px;display:flex;flex-direction:column;gap:4px}
+.ditem{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:14px;flex-wrap:wrap}
+.ditem .t{flex:1 1 200px;min-width:0;color:var(--muted);overflow-wrap:anywhere}
+.ditem .when{font-size:11px;color:var(--faint)}
+.empty-note{color:var(--faint);font-size:13px;padding:4px 0 6px}
+
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--fg);padding:0;width:min(640px,calc(100vw - 32px));max-height:calc(100vh - 48px)}
+dialog::backdrop{background:rgba(10,15,25,.45)}
+.dlg{display:flex;flex-direction:column;max-height:calc(100vh - 48px)}
+.dlg header{padding:16px 18px 10px;align-items:center}
+.dlg h3{margin:0;font-size:17px}
+.dlg .body{padding:4px 18px 14px;overflow:auto;display:flex;flex-direction:column;gap:16px}
+.dlg footer{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.tier-table{display:flex;flex-direction:column;gap:6px}
+.trow{display:grid;grid-template-columns:36px minmax(0,1fr) 110px minmax(0,1.2fr) 32px;gap:8px;align-items:center}
+.trow.head{font-size:12px;color:var(--muted)}
+.trow input[type=color]{width:34px;height:30px;border:1px solid var(--line);border-radius:8px;padding:2px;background:var(--surface)}
+.trow .text-in{padding:5px 8px}
+.trow .num{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted)}
+.trow .num input{width:64px;font-family:var(--f-mono)}
+.trow .rng{font-size:12px;color:var(--muted)}
+.trow .x{color:var(--faint);font-size:18px;line-height:1}
+.trow .x:hover{color:var(--danger)}
+.radio{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.radio label{display:flex;gap:8px;align-items:flex-start}
+.err{color:var(--danger);font-size:13px;margin:0}
+@media (max-width:560px){
+  .trow{grid-template-columns:36px minmax(0,1fr) 92px 28px}
+  .trow .rng{grid-column:2/4;margin-top:-4px}
+  .trow.head .rng{display:none}
+}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);
+  border-radius:10px;padding:9px 14px;display:flex;gap:14px;align-items:center;font-size:14px;box-shadow:0 8px 24px -8px rgba(0,0,0,.4);max-width:calc(100vw - 32px)}
+.toast button{color:var(--bg);font-weight:700;text-decoration:underline}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>待辦看板</h1>
+      <div class="today mono" id="today"></div>
+    </div>
+    <div class="tools">
+      <button class="btn" id="btn-backup" type="button">備份</button>
+      <button class="btn" id="btn-settings" type="button">層級設定</button>
+    </div>
+  </header>
+  <div class="summary" id="summary"></div>
+  <div id="banner"></div>
+
+  <form class="add" id="addform" autocomplete="off">
+    <input type="text" id="add-title" placeholder="新增待辦事項，按 Enter 送出" aria-label="待辦事項標題">
+    <input type="date" class="date-in" id="add-due" aria-label="到期日">
+    <div class="quick" id="quick">
+      <button type="button" data-q="0">今天</button><button type="button" data-q="1">明天</button>
+      <button type="button" data-q="3">+3天</button><button type="button" data-q="7">+7天</button>
+      <button type="button" data-q="">無期限</button>
+    </div>
+    <button class="btn primary" type="submit">新增</button>
+  </form>
+
+  <main id="groups" class="groups"></main>
+
+  <details class="drawer" id="done-drawer">
+    <summary>已完成 <span class="count" id="done-count">0</span></summary>
+    <div class="dlist" id="done-list"></div>
+  </details>
+  <details class="drawer" id="trash-drawer">
+    <summary>垃圾桶 <span class="count" id="trash-count">0</span><button class="btn danger sact" type="button" data-act="emptyTrash" id="btn-empty">清空</button></summary>
+    <div class="dlist" id="trash-list"></div>
+  </details>
+</div>
+
+<dialog id="dlg-settings"><div class="dlg">
+  <header><h3>層級設定</h3></header>
+  <div class="body">
+    <p class="hint">每個層級設定「剩餘天數上限」，系統由上往下比對，落在第一個符合的層級。負數代表逾期，0 代表今天到期。最後一列收納其餘所有天數。</p>
+    <div class="tier-table" id="tier-table"></div>
+    <div><button class="btn" type="button" id="tier-add">新增層級</button></div>
+    <div class="field"><span class="lbl">母任務依哪個日期分組</span>
+      <div class="radio">
+        <label><input type="radio" name="groupBy" value="earliest" id="gb-earliest"> <span>最急的日期（母任務與未完成子任務中最早的那個）</span></label>
+        <label><input type="radio" name="groupBy" value="self" id="gb-self"> <span>只看母任務自己的到期日</span></label>
+      </div>
+    </div>
+    <p class="err" id="tier-err" hidden></p>
+  </div>
+  <footer>
+    <button class="btn" type="button" id="tier-reset" style="margin-right:auto">恢復預設</button>
+    <button class="btn" type="button" data-close>取消</button>
+    <button class="btn primary" type="button" id="tier-save">儲存</button>
+  </footer>
+</div></dialog>
+
+<dialog id="dlg-backup"><div class="dlg">
+  <header><h3>備份與還原</h3></header>
+  <div class="body">
+    <p class="hint">資料只存在這台電腦的瀏覽器裡。清除瀏覽器資料或重灌電腦會讓資料消失，建議定期下載備份檔。</p>
+    <div class="frow">
+      <button class="btn primary" type="button" id="bk-download">下載備份檔 (.json)</button>
+      <button class="btn" type="button" id="bk-copy">複製備份內容</button>
+    </div>
+    <div class="field"><label for="bk-import-text">還原：選擇備份檔，或貼上備份內容</label>
+      <input type="file" id="bk-file" accept=".json,application/json">
+      <textarea id="bk-import-text" rows="4" placeholder="貼上備份內容"></textarea>
+    </div>
+    <p class="hint" id="bk-msg"></p>
+  </div>
+  <footer>
+    <button class="btn" type="button" data-close>關閉</button>
+    <button class="btn danger" type="button" id="bk-import">還原（取代目前全部資料）</button>
+  </footer>
+</div></dialog>
+
+<div class="toast" id="toast" hidden><span id="toast-msg"></span><button type="button" id="toast-undo">復原</button></div>
+
+<script>
+(()=>{
+const DAY=86400000, WD='日一二三四五六';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4);
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const todayStr=()=>ymd(new Date());
+const parse=s=>{const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=n=>{const d=new Date();d.setDate(d.getDate()+n);return ymd(d)};
+const daysLeft=s=>{if(!s)return null;const t=new Date();t.setHours(0,0,0,0);return Math.round((parse(s)-t)/DAY)};
+const shortDate=s=>{const d=parse(s);return (d.getMonth()+1)+'/'+d.getDate()+' ('+WD[d.getDay()]+')'};
+const dayText=d=>d==null?'無期限':d<0?`逾期 ${-d} 天`:d===0?'今天':d===1?'明天':`剩 ${d} 天`;
+
+/* ---------- storage: IndexedDB with in-memory fallback ---------- */
+const DB={db:null,
+  open(){return new Promise(res=>{try{const r=indexedDB.open('todo-board',1);
+    r.onupgradeneeded=()=>r.result.createObjectStore('kv');
+    r.onsuccess=()=>{this.db=r.result;res(true)};r.onerror=()=>res(false);r.onblocked=()=>res(false)}catch(e){res(false)}})},
+  get(k){return new Promise(res=>{if(!this.db)return res(undefined);try{const q=this.db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>res(undefined)}catch(e){res(undefined)}})},
+  set(k,v){return new Promise(res=>{if(!this.db)return res(false);try{const tx=this.db.transaction('kv','readwrite');tx.objectStore('kv').put(v,k);tx.oncomplete=()=>res(true);tx.onerror=()=>res(false)}catch(e){res(false)}})}
+};
+
+const defaultSettings=()=>({
+  tiers:[
+    {id:'t-over',name:'已逾期',max:-1,color:'#D64545',hideDone:false},
+    {id:'t-today',name:'今天到期',max:0,color:'#E8642E',hideDone:false},
+    {id:'t-3',name:'三天內',max:3,color:'#EE9A2A',hideDone:false},
+    {id:'t-7',name:'本週內',max:7,color:'#CFAE1F',hideDone:false},
+    {id:'t-later',name:'還早',max:null,color:'#4E9A78',hideDone:false}],
+  noDate:{id:'t-none',name:'無期限',color:'#8C96A5',hideDone:false},
+  groupBy:'earliest'
+});
+const sampleTasks=()=>{const now=Date.now();let i=0;const T=(title,due,o={})=>({id:uid(),title,due,note:o.note||'',done:!!o.done,doneAt:o.done?now:null,created:now+(i++),trashed:false,trashedAt:null,sample:true,
+  subs:(o.subs||[]).map(s=>({id:uid(),title:s[0],due:s[1],note:s[2]||'',done:!!s[3]}))});
+  return [
+    T('回覆供應商報價確認',addDays(-1),{subs:[['比對三家報價',addDays(-2),'',true],['整理差異表給主管',addDays(0),'附上運費與交期差異']]}),
+    T('週會簡報更新',addDays(0),{note:'第 4 頁的進度表要換成最新數字'}),
+    T('送出採購申請單',addDays(2),{subs:[['取得主管簽核',addDays(1)],['上傳到系統',addDays(2),'記得附報價單 PDF']]}),
+    T('整理客戶需求清單',addDays(5)),
+    T('更新部門聯絡人名單',addDays(4),{done:true}),
+    T('教育訓練時數登錄',addDays(20),{subs:[['確認本年度已上時數',addDays(14)]]}),
+    T('季度檢討報告初稿',addDays(30),{done:true}),
+    T('研究新版排程工具',null),
+  ];
+};
+
+let state={tasks:[],settings:defaultSettings(),sample:false};
+let persisted=false;
+const ui={open:new Set(),subNote:new Set(),lastDay:todayStr()};
+
+let saveTimer=null;
+function save(){clearTimeout(saveTimer);saveTimer=setTimeout(async()=>{if(persisted)await DB.set('state',state)},150);updateBadge()}
+
+/* ---------- tiers ---------- */
+const sortedTiers=(tiers=state.settings.tiers)=>[...tiers].sort((a,b)=>(a.max==null?1e9:a.max)-(b.max==null?1e9:b.max));
+function tierFor(d){if(d==null)return state.settings.noDate;for(const t of sortedTiers())if(t.max==null||d<=t.max)return t;return sortedTiers().at(-1)}
+const colorFor=d=>tierFor(d).color;
+function rangeText(tiers,idx){
+  const st=sortedTiers(tiers),t=st[idx],prev=idx>0?st[idx-1].max:null;
+  const lo=idx===0?-Infinity:prev+1, hi=t.max==null?Infinity:t.max;
+  const f=n=>n<0?`逾期 ${-n} 天`:n===0?'今天':`${n} 天`;
+  if(lo===-Infinity&&hi===Infinity)return '全部';
+  if(lo===-Infinity)return hi<0?(hi===-1?'已過到期日':`逾期 ${-hi} 天以上`):hi===0?'今天及逾期':`剩 ${hi} 天以內（含逾期）`;
+  if(hi===Infinity)return lo<=0?`${f(lo)}以後`:`剩 ${lo} 天以上`;
+  if(lo===hi)return lo===0?'今天到期':lo<0?`逾期 ${-lo} 天`:`剩 ${lo} 天`;
+  if(lo>=0)return `剩 ${lo}–${hi} 天`;
+  return `${f(lo)} 至 ${f(hi)}`;
+}
+function groupDate(t){
+  if(state.settings.groupBy==='self')return t.due||null;
+  const ds=[t.due,...t.subs.filter(s=>!s.done).map(s=>s.due)].filter(Boolean).sort();
+  return ds[0]||null;
+}
+
+/* ---------- render ---------- */
+const CHECK='<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+function pill(due){const d=daysLeft(due);return `<span class="pill" style="--c:${colorFor(d)}">${dayText(d)}</span>`}
+
+function taskHTML(t){
+  const open=ui.open.has(t.id), d=daysLeft(t.due);
+  const doneSubs=t.subs.filter(s=>s.done).length;
+  const meta=[];
+  if(t.subs.length)meta.push(`子任務 ${doneSubs}/${t.subs.length}`);
+  if(t.note)meta.push('有備註');
+  let h=`<article class="task${t.done?' done':''}${open?' open':''}" data-id="${t.id}">
+  <div class="row">
+    <button class="check" type="button" data-act="toggle" aria-pressed="${t.done}" aria-label="標記完成">${CHECK}</button>
+    <button class="ttl" type="button" data-act="expand" aria-expanded="${open}"><span class="ttl-text">${esc(t.title)}</span>${meta.length?`<span class="ttl-meta">${meta.join(' · ')}</span>`:''}</button>
+    <span class="due"><span class="pill" style="--c:${colorFor(d)}">${dayText(d)}</span>${t.due?`<span class="dstr mono">${shortDate(t.due)}</span>`:''}</span>
+  </div>`;
+  if(!open){
+    const pending=t.subs.filter(s=>!s.done);
+    if(pending.length&&!t.done)h+=`<ul class="subs-mini">${pending.map(s=>`<li><span class="dot" style="--c:${colorFor(daysLeft(s.due))}"></span><span class="t">${esc(s.title)}</span>${s.due?pill(s.due):''}</li>`).join('')}</ul>`;
+  }else{
+    h+=`<div class="detail">
+      <div class="frow">
+        <div class="field"><label for="tt-${t.id}">標題</label><input class="text-in" id="tt-${t.id}" data-f="title" value="${esc(t.title)}"></div>
+        <div class="field"><label for="td-${t.id}">到期日</label><input type="date" class="date-in" id="td-${t.id}" data-f="due" value="${t.due||''}"></div>
+      </div>
+      <div class="field"><label for="tn-${t.id}">備註</label><textarea id="tn-${t.id}" data-f="note" placeholder="可留空">${esc(t.note)}</textarea></div>
+      <div class="field"><span class="lbl">子任務</span>
+        <div class="sublist">${t.subs.map(s=>subHTML(t,s)).join('')||'<div class="empty-note">還沒有子任務</div>'}</div>
+      </div>
+      <div class="addsub">
+        <input class="text-in" id="as-${t.id}" placeholder="新增子任務，按 Enter 送出" data-addsub>
+        <input type="date" class="date-in" id="asd-${t.id}" aria-label="子任務到期日">
+        <button class="btn" type="button" data-act="addSub">新增子任務</button>
+      </div>
+      <div class="dfoot"><button class="btn danger" type="button" data-act="trash">移到垃圾桶</button><button class="btn" type="button" data-act="expand">收合</button></div>
+    </div>`;
+  }
+  return h+'</article>';
+}
+function subHTML(t,s){
+  const noteOpen=ui.subNote.has(s.id);
+  return `<div class="sub${s.done?' done':''}" data-sid="${s.id}">
+    <div class="subrow">
+      <button class="check" type="button" data-act="toggleSub" aria-pressed="${s.done}" aria-label="子任務完成">${CHECK}</button>
+      <input class="sub-title" id="st-${s.id}" data-sf="title" value="${esc(s.title)}" aria-label="子任務標題">
+      <input type="date" class="date-in" id="sd-${s.id}" data-sf="due" value="${s.due||''}" aria-label="子任務到期日">
+      ${pill(s.due)}
+      <button class="mini${s.note?' has':''}" type="button" data-act="subNote" aria-expanded="${noteOpen}">備註${s.note?' •':''}</button>
+      <button class="mini" type="button" data-act="delSub" aria-label="刪除子任務">刪除</button>
+    </div>
+    ${noteOpen?`<textarea id="sn-${s.id}" data-sf="note" placeholder="子任務備註">${esc(s.note)}</textarea>`:''}
+  </div>`;
+}
+
+function render(){
+  const ae=document.activeElement, focusId=ae&&ae.id, sel=ae&&'selectionStart' in ae?[ae.selectionStart,ae.selectionEnd]:null;
+  const t0=new Date();
+  $('#today').textContent=`${t0.getFullYear()}/${t0.getMonth()+1}/${t0.getDate()}（${WD[t0.getDay()]}）`;
+  const live=state.tasks.filter(t=>!t.trashed);
+  const tiers=[...sortedTiers(),state.settings.noDate];
+  const buckets=new Map(tiers.map(t=>[t.id,[]])), doneArea=[];
+  for(const t of live){const tier=tierFor(daysLeft(groupDate(t)));
+    if(t.done&&tier.hideDone)doneArea.push(t);else buckets.get(tier.id).push(t);}
+  const byDate=(a,b)=>(a.done-b.done)||((groupDate(a)||'9999')<(groupDate(b)||'9999')?-1:(groupDate(a)||'9999')>(groupDate(b)||'9999')?1:a.created-b.created);
+  const st=sortedTiers();
+  $('#groups').innerHTML=tiers.map(tier=>{
+    const items=buckets.get(tier.id).sort(byDate), idx=st.indexOf(tier);
+    const range=tier===state.settings.noDate?'沒有設定到期日':rangeText(state.settings.tiers,idx);
+    const undone=items.filter(t=>!t.done).length;
+    return `<section class="group${items.length?'':' empty'}" style="--c:${tier.color}" data-tier="${tier.id}">
+      <div class="ghead"><h2><span class="dot"></span>${esc(tier.name)}</h2><span class="range">${esc(range)}</span><span class="count">${undone}</span>
+      <button class="hide" type="button" data-act="hideToggle" aria-pressed="${tier.hideDone}" title="切換：完成的項目要留在這組，還是移到已完成區">${tier.hideDone?'完成後移到已完成':'完成後留在清單'}</button></div>
+      ${items.length?`<div class="list">${items.map(taskHTML).join('')}</div>`:''}
+    </section>`}).join('');
+
+  // summary chips (undone only)
+  $('#summary').innerHTML=tiers.map(tier=>{const n=buckets.get(tier.id).filter(t=>!t.done).length;return n?`<span class="chip" style="--c:${tier.color}"><span class="dot"></span>${esc(tier.name)} <b>${n}</b></span>`:''}).join('')
+    ||'<span class="chip" style="--c:#4E9A78"><span class="dot"></span>目前沒有未完成的事項</span>';
+
+  $('#banner').innerHTML=state.sample?`<div class="banner"><span>目前顯示的是範例資料，方便你試用各項功能。</span><button class="btn primary" type="button" data-act="clearSample">清除範例，開始使用</button></div>`:'';
+
+  doneArea.sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+  $('#done-count').textContent=doneArea.length;
+  $('#done-list').innerHTML=doneArea.length?doneArea.map(t=>`<div class="ditem" data-id="${t.id}"><span class="t">${esc(t.title)}${t.subs.length?`（子任務 ${t.subs.length}）`:''}</span><span class="when mono">${t.doneAt?'完成於 '+shortDate(ymd(new Date(t.doneAt))):''}</span><button class="mini" type="button" data-act="undone">取消完成</button><button class="mini" type="button" data-act="trash">丟到垃圾桶</button></div>`).join('')
+    :'<div class="empty-note">設定為「完成後移到已完成」的組別，勾選完成的事項會集中在這裡。</div>';
+  const trash=state.tasks.filter(t=>t.trashed).sort((a,b)=>b.trashedAt-a.trashedAt);
+  $('#trash-count').textContent=trash.length;
+  $('#btn-empty').hidden=!trash.length;
+  $('#trash-list').innerHTML=trash.length?trash.map(t=>`<div class="ditem" data-id="${t.id}"><span class="t">${esc(t.title)}</span><button class="mini" type="button" data-act="restore">還原</button><button class="mini" type="button" data-act="purge" style="color:var(--danger)">永久刪除</button></div>`).join('')
+    :'<div class="empty-note">垃圾桶是空的。</div>';
+
+  if(focusId){const el=document.getElementById(focusId);if(el){el.focus();if(sel&&'setSelectionRange' in el){try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}}
+  updateBadge();
+}
+
+function updateBadge(){
+  const n=state.tasks.filter(t=>!t.trashed&&!t.done&&(d=>d!=null&&d<=0)(daysLeft(groupDate(t)))).length;
+  document.title=n?`(${n}) 待辦看板`:'待辦看板';
+  try{if('setAppBadge' in navigator){n?navigator.setAppBadge(n).catch(()=>{}):navigator.clearAppBadge().catch(()=>{})}}catch(e){}
+}
+
+/* ---------- toast ---------- */
+let toastTimer=null,undoFn=null;
+function toast(msg,undo){$('#toast-msg').textContent=msg;undoFn=undo||null;$('#toast-undo').hidden=!undo;$('#toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{$('#toast').hidden=true;undoFn=null},4500)}
+$('#toast-undo').addEventListener('click',()=>{if(undoFn)undoFn();$('#toast').hidden=true;undoFn=null});
+
+/* ---------- actions ---------- */
+const findT=id=>state.tasks.find(t=>t.id===id);
+const snapshot=()=>JSON.stringify(state.tasks);
+const restoreFrom=s=>()=>{state.tasks=JSON.parse(s);save();render()};
+const actions={
+  toggle(t){const before=snapshot();t.done=!t.done;t.doneAt=t.done?Date.now():null;save();render();
+    if(t.done&&tierFor(daysLeft(groupDate(t))).hideDone)toast(`「${t.title}」已移到已完成區`,restoreFrom(before))},
+  expand(t){ui.open.has(t.id)?ui.open.delete(t.id):ui.open.add(t.id);render()},
+  toggleSub(t,s){s.done=!s.done;save();render()},
+  subNote(t,s){ui.subNote.has(s.id)?ui.subNote.delete(s.id):ui.subNote.add(s.id);render();if(ui.subNote.has(s.id))document.getElementById('sn-'+s.id)?.focus()},
+  delSub(t,s){const before=snapshot();t.subs=t.subs.filter(x=>x!==s);save();render();toast('已刪除子任務',restoreFrom(before))},
+  addSub(t){const ti=document.getElementById('as-'+t.id),di=document.getElementById('asd-'+t.id);const v=ti.value.trim();if(!v){ti.focus();return}
+    t.subs.push({id:uid(),title:v,due:di.value||null,note:'',done:false});save();render();document.getElementById('as-'+t.id)?.focus()},
+  trash(t){const before=snapshot();t.trashed=true;t.trashedAt=Date.now();ui.open.delete(t.id);save();render();toast(`已把「${t.title}」丟到垃圾桶`,restoreFrom(before))},
+  undone(t){t.done=false;t.doneAt=null;save();render()},
+  restore(t){t.trashed=false;t.trashedAt=null;save();render()},
+  purge(t){const before=snapshot();state.tasks=state.tasks.filter(x=>x!==t);save();render();toast('已永久刪除',restoreFrom(before))},
+};
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act;
+  if(act==='hideToggle'){const id=b.closest('[data-tier]').dataset.tier;const tier=id===state.settings.noDate.id?state.settings.noDate:state.settings.tiers.find(t=>t.id===id);tier.hideDone=!tier.hideDone;save();render();return}
+  if(act==='clearSample'){state.tasks=state.tasks.filter(t=>!t.sample);state.sample=false;ui.open.clear();save();render();return}
+  if(act==='emptyTrash'){e.preventDefault();const before=snapshot();const n=state.tasks.filter(t=>t.trashed).length;state.tasks=state.tasks.filter(t=>!t.trashed);save();render();toast(`已永久刪除 ${n} 筆`,restoreFrom(before));return}
+  const host=b.closest('[data-id]');if(!host)return;const t=findT(host.dataset.id);if(!t)return;
+  const sh=b.closest('[data-sid]');const s=sh?t.subs.find(x=>x.id===sh.dataset.sid):null;
+  actions[act]?.(t,s);
+});
+// field edits: commit on change (no re-render while typing)
+document.addEventListener('change',e=>{
+  const el=e.target,host=el.closest('[data-id]');if(!host)return;const t=findT(host.dataset.id);if(!t)return;
+  if(el.dataset.f){const f=el.dataset.f;if(f==='title'){const v=el.value.trim();if(!v){el.value=t.title;return}t.title=v}else if(f==='due')t.due=el.value||null;else t.note=el.value;save();render()}
+  else if(el.dataset.sf){const s=t.subs.find(x=>x.id===el.closest('[data-sid]').dataset.sid);const f=el.dataset.sf;
+    if(f==='title'){const v=el.value.trim();if(!v){el.value=s.title;return}s.title=v}else if(f==='due')s.due=el.value||null;else s.note=el.value;save();render()}
+});
+document.addEventListener('input',e=>{ // notes autosave while typing
+  const el=e.target;if(el.tagName!=='TEXTAREA')return;const host=el.closest('[data-id]');if(!host)return;const t=findT(host.dataset.id);if(!t)return;
+  if(el.dataset.f==='note'){t.note=el.value;save()}else if(el.dataset.sf==='note'){const s=t.subs.find(x=>x.id===el.closest('[data-sid]').dataset.sid);s.note=el.value;save()}
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.matches('[data-addsub]')){e.preventDefault();const t=findT(e.target.closest('[data-id]').dataset.id);actions.addSub(t)}
+  if(e.key==='Enter'&&e.target.matches('.sub-title,.text-in[data-f="title"]')){e.target.blur()}
+});
+
+/* quick add */
+$('#quick').addEventListener('click',e=>{const b=e.target.closest('[data-q]');if(!b)return;$('#add-due').value=b.dataset.q===''?'':addDays(+b.dataset.q);$('#add-title').focus()});
+$('#addform').addEventListener('submit',e=>{e.preventDefault();const v=$('#add-title').value.trim();if(!v){$('#add-title').focus();return}
+  state.tasks.push({id:uid(),title:v,due:$('#add-due').value||null,note:'',done:false,doneAt:null,created:Date.now(),trashed:false,trashedAt:null,subs:[]});
+  $('#add-title').value='';save();render();$('#add-title').focus()});
+
+/* drawers keep their open state across renders natively (they are outside #groups) */
+
+/* ---------- settings dialog ---------- */
+let draft=null;
+const dlgS=$('#dlg-settings');
+function drawTiers(){
+  const st=sortedTiers(draft.tiers);
+  $('#tier-table').innerHTML=`<div class="trow head"><span>顏色</span><span>名稱</span><span>天數上限</span><span class="rng">涵蓋範圍</span><span></span></div>`+
+  st.map((t,i)=>`<div class="trow" data-tid="${t.id}">
+    <input type="color" id="tc-${t.id}" value="${t.color}" data-k="color" aria-label="顏色">
+    <input class="text-in" id="tn-${t.id}" value="${esc(t.name)}" data-k="name" aria-label="名稱">
+    <span class="num">${t.max==null?'其餘全部':`<span>≤</span><input class="text-in" type="number" step="1" id="tm-${t.id}" value="${t.max}" data-k="max" aria-label="天數上限"><span>天</span>`}</span>
+    <span class="rng">${esc(rangeText(draft.tiers,i))}</span>
+    ${t.max==null?'<span></span>':`<button class="x" type="button" data-del="${t.id}" aria-label="刪除層級">×</button>`}
+  </div>`).join('')+
+  `<div class="trow" data-tid="${draft.noDate.id}">
+    <input type="color" id="tc-none" value="${draft.noDate.color}" data-k="color" aria-label="顏色">
+    <input class="text-in" id="tn-none" value="${esc(draft.noDate.name)}" data-k="name" aria-label="名稱">
+    <span class="num">沒有到期日</span><span class="rng">未設定日期的事項</span><span></span></div>`;
+  $('#gb-'+draft.groupBy).checked=true;
+}
+const draftTier=id=>id===draft.noDate.id?draft.noDate:draft.tiers.find(t=>t.id===id);
+$('#tier-table').addEventListener('input',e=>{const el=e.target,row=el.closest('[data-tid]');if(!row)return;const t=draftTier(row.dataset.tid);
+  if(el.dataset.k==='color')t.color=el.value;if(el.dataset.k==='name')t.name=el.value;});
+$('#tier-table').addEventListener('change',e=>{const el=e.target;if(el.dataset.k!=='max')return;const t=draftTier(el.closest('[data-tid]').dataset.tid);
+  const v=parseInt(el.value,10);if(Number.isFinite(v))t.max=v;drawTiers();document.getElementById('tm-'+t.id)?.focus()});
+$('#tier-table').addEventListener('click',e=>{const b=e.target.closest('[data-del]');if(!b)return;draft.tiers=draft.tiers.filter(t=>t.id!==b.dataset.del);drawTiers()});
+$('#tier-add').addEventListener('click',()=>{const fin=draft.tiers.filter(t=>t.max!=null).map(t=>t.max);const m=(fin.length?Math.max(...fin):0)+7;
+  const pal=['#7A5CC2','#2E8FB8','#B5527F','#5C7A2E','#C2703A'];draft.tiers.push({id:'t-'+uid(),name:'新層級',max:m,color:pal[draft.tiers.length%pal.length],hideDone:false});drawTiers()});
+$('#tier-reset').addEventListener('click',()=>{draft=defaultSettings();drawTiers();$('#tier-err').hidden=true});
+$('#tier-save').addEventListener('click',()=>{
+  draft.groupBy=document.querySelector('input[name=groupBy]:checked')?.value||'earliest';
+  const err=$('#tier-err');const maxes=draft.tiers.filter(t=>t.max!=null).map(t=>t.max);
+  if(draft.tiers.some(t=>!t.name.trim())||!draft.noDate.name.trim()){err.textContent='每個層級都需要名稱。';err.hidden=false;return}
+  if(new Set(maxes).size!==maxes.length){err.textContent='有兩個層級的天數上限相同，請改成不同數字。';err.hidden=false;return}
+  err.hidden=true;draft.tiers.forEach(t=>t.name=t.name.trim());state.settings=draft;draft=null;save();render();dlgS.close();toast('層級設定已儲存')});
+$('#btn-settings').addEventListener('click',()=>{draft=JSON.parse(JSON.stringify(state.settings));$('#tier-err').hidden=true;drawTiers();dlgS.showModal()});
+
+/* ---------- backup dialog ---------- */
+const dlgB=$('#dlg-backup');
+const backupJSON=()=>JSON.stringify({app:'todo-board',version:1,exportedAt:new Date().toISOString(),state},null,2);
+$('#btn-backup').addEventListener('click',()=>{$('#bk-msg').textContent='';$('#bk-import-text').value='';$('#bk-file').value='';dlgB.showModal()});
+$('#bk-download').addEventListener('click',()=>{try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([backupJSON()],{type:'application/json'}));
+  a.download=`待辦備份-${todayStr()}.json`;document.body.appendChild(a);a.click();a.remove();$('#bk-msg').textContent='已下載備份檔。若沒有出現下載，請改用「複製備份內容」。'}catch(e){$('#bk-msg').textContent='這個環境無法下載檔案，請改用「複製備份內容」。'}});
+$('#bk-copy').addEventListener('click',()=>{const txt=backupJSON();navigator.clipboard?.writeText(txt).then(()=>{$('#bk-msg').textContent='已複製，可以貼到記事本存檔。'})
+  .catch(()=>{const ta=$('#bk-import-text');ta.value=txt;ta.select();$('#bk-msg').textContent='無法自動複製，內容已放進下方欄位並選取，請按 Ctrl+C。'})});
+$('#bk-file').addEventListener('change',async e=>{const f=e.target.files[0];if(f)$('#bk-import-text').value=await f.text()});
+$('#bk-import').addEventListener('click',()=>{try{const o=JSON.parse($('#bk-import-text').value);const s=o.state||o;
+  if(!Array.isArray(s.tasks)||!s.settings||!Array.isArray(s.settings.tiers))throw 0;state={tasks:s.tasks,settings:s.settings,sample:false};ui.open.clear();save();render();dlgB.close();toast(`已還原 ${s.tasks.length} 筆待辦`)}
+  catch(e){$('#bk-msg').textContent='讀不懂這份內容。請確認是從這個程式下載或複製的備份。'}});
+document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
+
+/* ---------- day rollover ---------- */
+function checkDay(){const d=todayStr();if(d!==ui.lastDay){ui.lastDay=d;render()}}
+setInterval(checkDay,60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkDay()});
+
+/* ---------- boot ---------- */
+(async()=>{
+  persisted=await DB.open();
+  let saved=persisted?await DB.get('state'):undefined;
+  if(saved&&Array.isArray(saved.tasks))state=saved;
+  else{state={tasks:sampleTasks(),settings:defaultSettings(),sample:true};state.settings.tiers.find(t=>t.id==='t-later').hideDone=true;if(persisted)DB.set('state',state)}
+  try{navigator.storage?.persist?.()}catch(e){}
+  render();
+  if(!persisted)toast('這個環境無法保存資料，關閉後內容會消失');
+  if(document.querySelector('link[rel=manifest]')&&'serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
+})();
+})();
+</script>
+
+</body>
+</html>
