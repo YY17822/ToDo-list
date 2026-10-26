@@ -26,6 +26,7 @@ create table todo.tasks (
   done_at     timestamptz,
   is_trashed  boolean not null default false,
   trashed_at  timestamptz,
+  archived_at timestamptz,                   -- 封存時間；空白 = 未封存
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );

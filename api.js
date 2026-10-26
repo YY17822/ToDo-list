@@ -6,7 +6,7 @@
 //
 // 畫面使用的資料格式（JS 物件）與資料表欄位的對照：
 //   task : id, title, due(due_date), note, done(is_done), doneAt(done_at), trashed(is_trashed),
-//          trashedAt(trashed_at), created(created_at), subs[]
+//          trashedAt(trashed_at), archivedAt(archived_at), created(created_at), subs[]
 //   sub  : id, title, due(due_date), note, done(is_done), doneAt(done_at), sortOrder(sort_order)
 //   tier : id, name, max(max_days), color, hideDone(hide_done)
 //   settings : groupBy(group_by), ui(ui_theme)
@@ -93,6 +93,7 @@
       if (j?.code === '42501') msg = '沒有權限存取資料表，請確認 schema.sql 已執行，且 todo schema 已加入 Exposed schemas。';
       if (j?.code === 'PGRST106') msg = 'todo schema 尚未開放給 API，請到 Supabase 的 API 設定加入 Exposed schemas。';
       if (j?.code === 'PGRST205' || j?.code === '42P01') msg = '找不到資料表，請先在 Supabase 執行 schema.sql。';
+      if ((j?.code === 'PGRST204' || j?.code === '42703') && /archived_at/.test(j?.message || '')) msg = '資料表還沒有「封存」欄位，請先在 Supabase 執行 supabase/003_tasks_archived_at.sql。';
       throw new ApiError(msg, r.status, j?.code);
     }
     return j;
@@ -105,22 +106,23 @@
   const fromSub = r => ({ id: r.id, title: r.title, due: r.due_date, note: r.note ?? '', done: r.is_done, doneAt: ms(r.done_at), sortOrder: r.sort_order });
   const fromTask = r => ({
     id: r.id, title: r.title, due: r.due_date, note: r.note ?? '', done: r.is_done, doneAt: ms(r.done_at),
-    trashed: r.is_trashed, trashedAt: ms(r.trashed_at), created: ms(r.created_at),
+    trashed: r.is_trashed, trashedAt: ms(r.trashed_at), archivedAt: ms(r.archived_at), created: ms(r.created_at),
     subs: (r.subtasks || []).map(fromSub).sort((a, b) => a.sortOrder - b.sortOrder),
   });
   const fromTier = r => ({ id: r.id, name: r.name, max: r.max_days, color: r.color, hideDone: r.hide_done });
 
-  const TASK_COLS = { title: 'title', due: 'due_date', note: 'note', done: 'is_done', doneAt: 'done_at', trashed: 'is_trashed', trashedAt: 'trashed_at', created: 'created_at' };
+  const TASK_COLS = { title: 'title', due: 'due_date', note: 'note', done: 'is_done', doneAt: 'done_at', trashed: 'is_trashed', trashedAt: 'trashed_at', archivedAt: 'archived_at', created: 'created_at' };
   const SUB_COLS = { title: 'title', due: 'due_date', note: 'note', done: 'is_done', doneAt: 'done_at', sortOrder: 'sort_order' };
   const TIER_COLS = { name: 'name', max: 'max_days', color: 'color', hideDone: 'hide_done' };
   const SET_COLS = { groupBy: 'group_by', ui: 'ui_theme' };
-  const TIME_KEYS = new Set(['doneAt', 'trashedAt', 'created']);
+  const TIME_KEYS = new Set(['doneAt', 'trashedAt', 'archivedAt', 'created']);
   function toRow(obj, cols) {
     const row = {};
     for (const [k, col] of Object.entries(cols)) if (k in obj) row[col] = TIME_KEYS.has(k) ? iso(obj[k]) : obj[k];
     return row;
   }
-  const taskRow = t => ({ id: t.id, ...toRow(t, TASK_COLS) });
+  // archived_at 沒有值時不送出，避免還沒執行 003 SQL 時，連一般的新增都失敗
+  const taskRow = t => { const r = { id: t.id, ...toRow(t, TASK_COLS) }; if (r.archived_at == null) delete r.archived_at; return r; };
   const subRow = (taskId, s) => ({ id: s.id, task_id: taskId, ...toRow(s, SUB_COLS) });
   const tierRow = t => ({ id: t.id, name: t.name, max_days: t.max, color: t.color, hide_done: !!t.hideDone });
 
@@ -178,6 +180,8 @@
       if (t.subs?.length) await rest('POST', '/subtasks', { body: t.subs.map(s => subRow(t.id, s)), prefer: 'return=minimal' });
     },
     updateTask: (id, patch) => rest('PATCH', '/tasks?id=eq.' + encodeURIComponent(id), { body: toRow(patch, TASK_COLS), prefer: 'return=minimal' }),
+    /** 一次修改多筆母任務（全部封存用） */
+    updateTasks: (ids, patch) => (ids.length ? rest('PATCH', '/tasks?id=' + inList(ids), { body: toRow(patch, TASK_COLS), prefer: 'return=minimal' }) : Promise.resolve()),
     deleteTasks: ids => (ids.length ? rest('DELETE', '/tasks?id=' + inList(ids), { prefer: 'return=minimal' }) : Promise.resolve()),
 
     createSub: (taskId, s) => rest('POST', '/subtasks', { body: subRow(taskId, s), prefer: 'return=minimal' }),

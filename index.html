@@ -540,7 +540,7 @@ h1{padding-top:.25em}
   <main id="groups" class="groups"></main>
 
   <details class="drawer" id="done-drawer">
-    <summary>已完成 <span class="count" id="done-count">0</span></summary>
+    <summary>已完成 <span class="count" id="done-count">0</span><button class="btn sact" type="button" data-act="archiveAll" id="btn-archive-all" title="把所有已完成的事項移到封存，清單會變清爽；月曆和周報仍查得到">全部封存</button></summary>
     <div class="dlist" id="done-list"></div>
   </details>
   <details class="drawer" id="trash-drawer">
@@ -632,7 +632,8 @@ const emptySettings=()=>({tiers:[],groupBy:'earliest',ui:null,userId:null});
 let state={tasks:[],settings:emptySettings(),loaded:false};
 const ui={open:new Set(),subNote:new Set(),doneOpen:new Set(),lastDay:todayStr(),hl:new Set(),showArchived:false,
   cal:{mode:'month',anchor:todayStr(),sel:todayStr()}};
-/* 封存規則：完成的事項在組別裡最多留到隔天；已完成區只顯示最近 7 天；更早的自動封存（資料仍在，月曆與周報可查） */
+/* 封存規則：完成的事項在組別裡最多留到隔天；已完成區只顯示最近 7 天；更早的自動封存。
+   也可以手動「封存」單筆或「全部封存」。封存只是不顯示在清單，資料仍在，月曆與周報都查得到。 */
 const KEEP_DONE_IN_LIST_DAYS=1, DONE_AREA_DAYS=7;
 
 /* 同步狀態燈號 */
@@ -775,14 +776,14 @@ function subHTML(t,s){
 }
 
 /* 已完成區的一筆：可展開查看備註與子任務（唯讀） */
-function doneItemHTML(t){
+function doneItemHTML(t,inArchive=false){
   const open=ui.doneOpen.has(t.id), canOpen=t.subs.length||t.note;
   const doneSubs=t.subs.filter(s=>s.done).length;
   let h=`<div class="ditem${open?' open':''}" data-id="${t.id}">
     ${canOpen?`<button class="dexp" type="button" data-act="doneExpand" aria-expanded="${open}"><span class="caret" aria-hidden="true"></span><span class="t">${esc(t.title)}${t.subs.length?`（子任務 ${doneSubs}/${t.subs.length}）`:''}</span></button>`
       :`<span class="t">${esc(t.title)}</span>`}
     <span class="when mono">${t.doneAt?'完成於 '+shortDate(ymd(new Date(t.doneAt))):''}</span>
-    <button class="mini" type="button" data-act="undone">取消完成</button><button class="mini" type="button" data-act="trash">丟到垃圾桶</button>`;
+    <button class="mini" type="button" data-act="undone">取消完成</button>${t.archivedAt?'<button class="mini" type="button" data-act="unarchive">取消封存</button>':inArchive?'':'<button class="mini" type="button" data-act="archive">封存</button>'}<button class="mini" type="button" data-act="trash">丟到垃圾桶</button>`;
   if(open){
     h+=`<div class="ddetail">`;
     if(t.note)h+=`<div class="dnote"><span class="lbl">備註</span><p>${esc(t.note)}</p></div>`;
@@ -810,7 +811,8 @@ function render(){
   const today0=parse(todayStr()).getTime();
   const keepFrom=today0-KEEP_DONE_IN_LIST_DAYS*DAY, areaFrom=today0-(DONE_AREA_DAYS-1)*DAY;
   for(const t of live){const tier=tierFor(daysLeft(groupDate(t)));
-    if(t.done&&(tier.hideDone||(t.doneAt||0)<keepFrom))((t.doneAt||0)>=areaFrom?doneArea:archived).push(t);
+    if(t.done&&t.archivedAt)archived.push(t);
+    else if(t.done&&(tier.hideDone||(t.doneAt||0)<keepFrom))((t.doneAt||0)>=areaFrom?doneArea:archived).push(t);
     else buckets.get(tier.id).push(t);}
   const byDate=(a,b)=>(a.done-b.done)||((groupDate(a)||'9999')<(groupDate(b)||'9999')?-1:(groupDate(a)||'9999')>(groupDate(b)||'9999')?1:a.created-b.created);
   const st=sortedTiers();
@@ -832,9 +834,10 @@ function render(){
   $('#done-count').textContent=doneArea.length;
   $('#done-list').innerHTML=(doneArea.length?doneArea.map(doneItemHTML).join('')
     :`<div class="empty-note">最近 ${DONE_AREA_DAYS} 天完成的事項會集中在這裡。</div>`)
-    +(archived.length?`<button class="archived-toggle" type="button" data-act="toggleArchived">${ui.showArchived?'收起較早完成的事項':`顯示較早完成的 ${archived.length} 筆（已封存）`}</button>`
-      +(ui.showArchived?archived.map(doneItemHTML).join(''):'')
+    +(archived.length?`<button class="archived-toggle" type="button" data-act="toggleArchived">${ui.showArchived?'收起已封存的事項':`顯示已封存的 ${archived.length} 筆`}</button>`
+      +(ui.showArchived?archived.map(t=>doneItemHTML(t,true)).join(''):'')
       +'<div class="archived-note">已封存的事項不會出現在清單上，但資料仍保留，月曆和周報都查得到。</div>':'');
+  $('#btn-archive-all').hidden=!live.some(t=>t.done&&!t.archivedAt);
   const trash=state.tasks.filter(t=>t.trashed).sort((a,b)=>b.trashedAt-a.trashedAt);
   $('#trash-count').textContent=trash.length;
   $('#btn-empty').hidden=!trash.length;
@@ -1090,8 +1093,11 @@ $('#toast-undo').addEventListener('click',()=>{if(undoFn)undoFn();$('#toast').hi
 
 /* ---------- actions：先更新畫面，再送到雲端 ---------- */
 const findT=id=>state.tasks.find(t=>t.id===id);
-function setDone(id,v){const t=findT(id);if(!t)return;t.done=v;t.doneAt=v?Date.now():null;if(!v)ui.doneOpen.delete(id);render();
-  persist(()=>API.updateTask(id,{done:t.done,doneAt:t.doneAt}))}
+function setDone(id,v){const t=findT(id);if(!t)return;t.done=v;t.doneAt=v?Date.now():null;if(!v)ui.doneOpen.delete(id);
+  const patch={done:t.done,doneAt:t.doneAt};if(!v&&t.archivedAt){t.archivedAt=null;patch.archivedAt=null}
+  render();persist(()=>API.updateTask(id,patch))}
+function setArchived(ids,v){const at=v?Date.now():null;const list=ids.map(findT).filter(Boolean);list.forEach(t=>t.archivedAt=at);render();
+  return persist(()=>API.updateTasks(list.map(t=>t.id),{archivedAt:at}),v?'封存失敗':'取消封存失敗')}
 function setTrashed(id,v){const t=findT(id);if(!t)return;t.trashed=v;t.trashedAt=v?Date.now():null;if(v){ui.open.delete(id);ui.doneOpen.delete(id)}render();
   persist(()=>API.updateTask(id,{trashed:t.trashed,trashedAt:t.trashedAt}))}
 function putBack(tasks){ // 復原永久刪除：把整筆（含子任務）重新寫回雲端
@@ -1114,6 +1120,8 @@ const actions={
   undone(t){setDone(t.id,false)},
   doneExpand(t){ui.doneOpen.has(t.id)?ui.doneOpen.delete(t.id):ui.doneOpen.add(t.id);render()},
   restore(t){setTrashed(t.id,false)},
+  archive(t){setArchived([t.id],true);toast(`已封存「${t.title}」`,()=>setArchived([t.id],false))},
+  unarchive(t){setArchived([t.id],false)},
   purge(t){state.tasks=state.tasks.filter(x=>x!==t);render();persist(()=>API.deleteTasks([t.id]),'刪除失敗');toast('已永久刪除',()=>putBack([t]))},
 };
 document.addEventListener('click',e=>{
@@ -1121,6 +1129,8 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act;
   if(act==='retry'){$('#banner').innerHTML='';reload();return}
   if(act==='toggleArchived'){ui.showArchived=!ui.showArchived;render();return}
+  if(act==='archiveAll'){e.preventDefault();const ids=state.tasks.filter(t=>!t.trashed&&t.done&&!t.archivedAt).map(t=>t.id);if(!ids.length)return;
+    setArchived(ids,true);toast(`已封存 ${ids.length} 筆已完成事項`,()=>setArchived(ids,false));return}
   if(act==='hideToggle'){const id=b.closest('[data-tier]').dataset.tier;const tier=state.settings.tiers.find(t=>t.id===id);if(!tier)return;
     tier.hideDone=!tier.hideDone;render();persist(()=>API.updateTier(id,{hideDone:tier.hideDone}));return}
   if(act==='emptyTrash'){e.preventDefault();const gone=state.tasks.filter(t=>t.trashed);if(!gone.length)return;
