@@ -387,6 +387,99 @@ h1{padding-top:.25em}
 .sync[data-s="saving"]::before{background:#E0A526}
 .sync[data-s="error"]::before{background:var(--danger)}
 .banner.error{border-color:color-mix(in srgb,var(--danger) 50%,var(--line));background:color-mix(in srgb,var(--danger) 7%,var(--surface-solid))}
+/* ===================== 畫面切換：清單／月曆／並排 ===================== */
+.viewbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface-solid)}
+.seg button{font-size:13px;padding:6px 14px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button:hover{color:var(--fg)}
+.seg button[aria-pressed="true"]{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:var(--accent-fg);font-weight:600}
+.views{display:flex;flex-direction:column;gap:18px}
+.pane{display:flex;flex-direction:column;gap:18px;min-width:0}
+#app[data-view="list"] #cal-pane,#app[data-view="cal"] #list-pane{display:none}
+#app[data-view="cal"]{max-width:1040px}
+#app[data-view="split"]{max-width:1600px}
+#app[data-view="split"] .views{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px;align-items:start}
+#app[data-view="split"] #cal-pane{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;padding-right:2px}
+@media (max-width:1099px){.only-wide{display:none}}
+.task.hl{box-shadow:0 0 0 2px var(--accent-2)}
+.task.flash{animation:flash 1.4s ease-out}
+@keyframes flash{0%,40%{box-shadow:0 0 0 3px var(--accent-2),0 0 22px -4px var(--accent-2)}100%{box-shadow:none}}
+
+/* ===================== 月曆 ===================== */
+.cal-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.cal-nav{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.cal-nav h2{margin:0 0 0 8px;font-size:18px;font-family:var(--f-display);letter-spacing:.04em}
+.btn.icon{width:34px;padding:6px 0;font-size:16px;line-height:1}
+.cal-legend{display:flex;gap:14px;font-size:12px;color:var(--muted)}
+.lg{display:inline-flex;align-items:center;gap:6px}
+.lg.lg-due::before{content:"";width:8px;height:8px;border-radius:50%;background:#EE9A2A}
+.lg.lg-done::before{content:"✓";font-size:11px;font-weight:700;color:#3E9B6B}
+.month{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--surface-solid)}
+.mhead,.mgrid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.mhead span{font-size:12px;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--line)}
+.mhead span:nth-child(n+6){color:color-mix(in srgb,var(--danger) 60%,var(--muted))}
+.mcell{min-height:104px;padding:5px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:3px;text-align:left;cursor:pointer;min-width:0;background:var(--surface-solid);font:inherit;color:inherit}
+.mcell:nth-child(7n){border-right:0}
+.mgrid .mcell:nth-last-child(-n+7){border-bottom:0}
+.mcell:hover{background:color-mix(in srgb,var(--accent) 5%,var(--surface-solid))}
+.mcell.out{background:var(--sunk)}
+.mcell.out .dn{opacity:.5}
+.mcell.sel{box-shadow:inset 0 0 0 2px var(--accent)}
+.dn{font-family:var(--f-mono);font-size:12px;min-width:22px;height:22px;display:inline-grid;place-items:center;border-radius:999px;align-self:flex-start}
+.mcell.today .dn{background:var(--accent);color:var(--accent-fg);font-weight:600}
+.ci{display:block;width:100%;box-sizing:border-box;font-size:11.5px;line-height:1.4;padding:1px 6px;border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left;cursor:pointer;font-family:var(--f-body)}
+.ci.k-due{background:color-mix(in srgb,var(--c) 16%,var(--surface-solid));color:color-mix(in srgb,var(--c) 70%,var(--fg))}
+.ci.k-done{background:color-mix(in srgb,#3E9B6B 12%,var(--surface-solid));color:color-mix(in srgb,#3E9B6B 55%,var(--muted))}
+.ci.k-done::before{content:"✓ ";font-weight:700}
+.ci .par{opacity:.7}
+.ci:hover{filter:brightness(.96);outline:1px solid color-mix(in srgb,var(--c,#3E9B6B) 50%,transparent)}
+.more{font-size:11px;color:var(--muted);padding-left:4px}
+@media (max-width:640px){
+  .mcell{min-height:64px;padding:3px}
+  .mcell .ci{display:inline-block;width:8px;height:8px;padding:0;border-radius:50%;font-size:0;margin:1px}
+  .mcell .ci.k-due{background:var(--c)}
+  .mcell .ci.k-done{background:#3E9B6B}
+  .mcell .ci.k-done::before{content:none}
+  .mcell .more{font-size:10px}
+}
+.dayd{background:var(--surface-solid);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.dayd-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.dayd-h h3{margin:0;font-size:16px}
+.dsec{display:flex;flex-direction:column;gap:4px}
+.dsec>.lbl{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.ditem2{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 6px;border-radius:6px;text-align:left;cursor:pointer;width:100%;box-sizing:border-box}
+.ditem2:hover{background:var(--sunk)}
+.ditem2 .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.ditem2.k-done .dot{background:#3E9B6B}
+.ditem2 .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.ditem2 .par{color:var(--muted);font-size:12px}
+.ditem2 .st{font-size:12px;color:var(--muted);white-space:nowrap}
+.empty-day{font-size:13px;color:var(--faint)}
+
+/* 週檢視 */
+.week{background:var(--surface-solid);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.wrow{display:grid;grid-template-columns:96px minmax(0,1fr);border-bottom:1px solid var(--line)}
+.wrow:last-child{border-bottom:0}
+.wrow.today{background:color-mix(in srgb,var(--accent) 6%,var(--surface-solid))}
+.wday{padding:10px 12px;border-right:1px solid var(--line);font-size:13px;display:flex;flex-direction:column;gap:2px}
+.wday b{font-family:var(--f-mono);font-size:15px}
+.wday .tag{font-size:11px;color:var(--accent);font-weight:600}
+.witems{padding:8px 10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+
+/* 周報 */
+.report{background:var(--surface-solid);border:1px solid var(--line-strong);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:12px}
+.report-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.report-h h3{margin:0;font-size:16px}
+.rstats{display:flex;flex-wrap:wrap;gap:8px}
+.rstat{font-size:13px;padding:4px 10px;border-radius:var(--r);background:var(--sunk);color:var(--muted)}
+.rstat b{color:var(--fg);font-family:var(--f-mono)}
+.ractions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.rfolder{font-size:12px;color:var(--muted)}
+.rfolder button{color:var(--accent);text-decoration:underline;font-size:12px}
+.mdprev{margin:0;max-height:420px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font-family:var(--f-mono);font-size:12.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg)}
+.archived-toggle{font-size:12px;color:var(--accent);text-decoration:underline;padding:6px 0;align-self:flex-start}
+.archived-note{font-size:12px;color:var(--faint);padding:4px 0}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -422,8 +515,16 @@ h1{padding-top:.25em}
       <button class="btn" id="btn-logout" type="button">登出</button>
     </div>
   </header>
-  <div class="summary" id="summary"></div>
+  <nav class="viewbar" aria-label="畫面切換">
+    <div class="seg" id="viewswitch" role="group" aria-label="畫面">
+      <button type="button" data-view="list">清單</button><button type="button" data-view="cal">月曆</button><button type="button" data-view="split" class="only-wide">並排</button>
+    </div>
+  </nav>
   <div id="banner"></div>
+
+  <div class="views">
+  <section class="pane" id="list-pane" aria-label="待辦清單">
+  <div class="summary" id="summary"></div>
 
   <form class="add" id="addform" autocomplete="off">
     <input type="text" id="add-title" placeholder="新增待辦事項，按 Enter 送出" aria-label="待辦事項標題">
@@ -446,6 +547,24 @@ h1{padding-top:.25em}
     <summary>垃圾桶 <span class="count" id="trash-count">0</span><button class="btn danger sact" type="button" data-act="emptyTrash" id="btn-empty">清空</button></summary>
     <div class="dlist" id="trash-list"></div>
   </details>
+  </section>
+
+  <section class="pane" id="cal-pane" aria-label="月曆">
+    <div class="cal-bar">
+      <div class="cal-nav">
+        <button class="btn icon" type="button" data-cal="prev" aria-label="上一頁">‹</button>
+        <button class="btn" type="button" data-cal="today">今天</button>
+        <button class="btn icon" type="button" data-cal="next" aria-label="下一頁">›</button>
+        <h2 id="cal-title"></h2>
+      </div>
+      <div class="seg" id="cal-mode" role="group" aria-label="月曆檢視">
+        <button type="button" data-cal-mode="month">月</button><button type="button" data-cal-mode="week">週</button>
+      </div>
+    </div>
+    <div class="cal-legend"><span class="lg lg-due">到期</span><span class="lg lg-done">完成</span></div>
+    <div id="cal-body"></div>
+  </section>
+  </div>
 </div>
 
 <dialog id="dlg-settings"><div class="dlg">
@@ -511,7 +630,10 @@ const dayText=d=>d==null?'無期限':d<0?`逾期 ${-d} 天`:d===0?'今天':d===1
 const API=window.TodoAPI;
 const emptySettings=()=>({tiers:[],groupBy:'earliest',ui:null,userId:null});
 let state={tasks:[],settings:emptySettings(),loaded:false};
-const ui={open:new Set(),subNote:new Set(),doneOpen:new Set(),lastDay:todayStr()};
+const ui={open:new Set(),subNote:new Set(),doneOpen:new Set(),lastDay:todayStr(),hl:new Set(),showArchived:false,
+  cal:{mode:'month',anchor:todayStr(),sel:todayStr()}};
+/* 封存規則：完成的事項在組別裡最多留到隔天；已完成區只顯示最近 7 天；更早的自動封存（資料仍在，月曆與周報可查） */
+const KEEP_DONE_IN_LIST_DAYS=1, DONE_AREA_DAYS=7;
 
 /* 同步狀態燈號 */
 function setSync(s){const el=$('#sync');el.dataset.s=s;el.textContent={ok:'已同步',saving:'儲存中…',error:'連線異常'}[s]}
@@ -609,7 +731,7 @@ function taskHTML(t){
   const meta=[];
   if(t.subs.length)meta.push(`子任務 ${doneSubs}/${t.subs.length}`);
   if(t.note)meta.push('有備註');
-  let h=`<article class="task${t.done?' done':''}${open?' open':''}" data-id="${t.id}">
+  let h=`<article class="task${t.done?' done':''}${open?' open':''}${ui.hl.has(t.id)?' hl':''}" data-id="${t.id}">
   <div class="row" data-act="expand" role="button" tabindex="0" aria-expanded="${open}" title="點一下展開／收合">
     <button class="check" type="button" data-act="toggle" aria-pressed="${t.done}" aria-label="標記完成">${CHECK}</button>
     <div class="ttl"><span class="ttl-text" data-edit title="點兩下編輯標題">${esc(t.title)}</span>${meta.length?`<span class="ttl-meta">${meta.join(' · ')}</span>`:''}</div>
@@ -679,13 +801,17 @@ function render(){
   if(!state.loaded||!state.settings.tiers.length){
     $('#groups').innerHTML='<div class="loading">正在從雲端載入…</div>';$('#summary').innerHTML='';
     $('#done-list').innerHTML='';$('#trash-list').innerHTML='';$('#done-count').textContent='0';$('#trash-count').textContent='0';$('#btn-empty').hidden=true;
+    $('#cal-body').innerHTML='';
     return;
   }
   const live=state.tasks.filter(t=>!t.trashed);
   const tiers=sortedTiers();
-  const buckets=new Map(tiers.map(t=>[t.id,[]])), doneArea=[];
+  const buckets=new Map(tiers.map(t=>[t.id,[]])), doneArea=[], archived=[];
+  const today0=parse(todayStr()).getTime();
+  const keepFrom=today0-KEEP_DONE_IN_LIST_DAYS*DAY, areaFrom=today0-(DONE_AREA_DAYS-1)*DAY;
   for(const t of live){const tier=tierFor(daysLeft(groupDate(t)));
-    if(t.done&&tier.hideDone)doneArea.push(t);else buckets.get(tier.id).push(t);}
+    if(t.done&&(tier.hideDone||(t.doneAt||0)<keepFrom))((t.doneAt||0)>=areaFrom?doneArea:archived).push(t);
+    else buckets.get(tier.id).push(t);}
   const byDate=(a,b)=>(a.done-b.done)||((groupDate(a)||'9999')<(groupDate(b)||'9999')?-1:(groupDate(a)||'9999')>(groupDate(b)||'9999')?1:a.created-b.created);
   const st=sortedTiers();
   $('#groups').innerHTML=tiers.map(tier=>{
@@ -694,7 +820,7 @@ function render(){
     const undone=items.filter(t=>!t.done).length;
     return `<section class="group${items.length?'':' empty'}${tier.max!=null&&tier.max<0&&undone?' alert':''}" style="--c:${tier.color}" data-tier="${tier.id}">
       <div class="ghead"><h2>${esc(tier.name)}</h2><span class="range">${esc(range)}</span><span class="count">${undone}</span>
-      <button class="hide" type="button" data-act="hideToggle" aria-pressed="${tier.hideDone}" title="切換：完成的項目要留在這組，還是移到已完成區">${tier.hideDone?'完成後移到已完成':'完成後留在清單'}</button></div>
+      <button class="hide" type="button" data-act="hideToggle" aria-pressed="${tier.hideDone}" title="切換：完成的項目要留在這組（隔天後自動移到已完成區），還是立刻移到已完成區">${tier.hideDone?'完成後移到已完成':'完成後留在清單'}</button></div>
       ${items.length?`<div class="list">${items.map(taskHTML).join('')}</div>`:''}
     </section>`}).join('');
 
@@ -702,16 +828,20 @@ function render(){
   $('#summary').innerHTML=tiers.map(tier=>{const n=buckets.get(tier.id).filter(t=>!t.done).length;return n?`<span class="chip" style="--c:${tier.color}">${esc(tier.name)} <b>${n}</b></span>`:''}).join('')
     ||'<span class="chip" style="--c:#4E9A78">目前沒有未完成的事項</span>';
 
-  doneArea.sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+  doneArea.sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));archived.sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   $('#done-count').textContent=doneArea.length;
-  $('#done-list').innerHTML=doneArea.length?doneArea.map(doneItemHTML).join('')
-    :'<div class="empty-note">設定為「完成後移到已完成」的組別，勾選完成的事項會集中在這裡。</div>';
+  $('#done-list').innerHTML=(doneArea.length?doneArea.map(doneItemHTML).join('')
+    :`<div class="empty-note">最近 ${DONE_AREA_DAYS} 天完成的事項會集中在這裡。</div>`)
+    +(archived.length?`<button class="archived-toggle" type="button" data-act="toggleArchived">${ui.showArchived?'收起較早完成的事項':`顯示較早完成的 ${archived.length} 筆（已封存）`}</button>`
+      +(ui.showArchived?archived.map(doneItemHTML).join(''):'')
+      +'<div class="archived-note">已封存的事項不會出現在清單上，但資料仍保留，月曆和周報都查得到。</div>':'');
   const trash=state.tasks.filter(t=>t.trashed).sort((a,b)=>b.trashedAt-a.trashedAt);
   $('#trash-count').textContent=trash.length;
   $('#btn-empty').hidden=!trash.length;
   $('#trash-list').innerHTML=trash.length?trash.map(t=>`<div class="ditem" data-id="${t.id}"><span class="t">${esc(t.title)}</span><button class="mini" type="button" data-act="restore">還原</button><button class="mini" type="button" data-act="purge" style="color:var(--danger)">永久刪除</button></div>`).join('')
     :'<div class="empty-note">垃圾桶是空的。</div>';
 
+  renderCal();
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus();if(sel&&'setSelectionRange' in el){try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}}
   updateBadge();
 }
@@ -721,6 +851,237 @@ function updateBadge(){
   document.title=n?`(${n}) ToDo`:'ToDo';
   try{if('setAppBadge' in navigator){n?navigator.setAppBadge(n).catch(()=>{}):navigator.clearAppBadge().catch(()=>{})}}catch(e){}
 }
+
+/* =====================================================================
+   畫面切換：清單／月曆／並排（並排只在寬螢幕提供，窄螢幕自動改成清單）
+   ===================================================================== */
+const VIEWS=['list','cal','split'];
+let viewPref='list';
+try{const v=localStorage.getItem('todo-view');if(VIEWS.includes(v))viewPref=v}catch(e){}
+const effView=()=>viewPref==='split'&&innerWidth<1100?'list':viewPref;
+function applyView(){
+  const v=effView();$('#app').dataset.view=v;
+  document.querySelectorAll('[data-view]').forEach(b=>{if(b.tagName==='BUTTON')b.setAttribute('aria-pressed',b.dataset.view===viewPref)});
+  if(v!=='split'&&ui.hl.size){ui.hl.clear();if(state.loaded)render()}
+}
+function setView(v){viewPref=v;try{localStorage.setItem('todo-view',v)}catch(e){}applyView();if(state.loaded)render()}
+$('#viewswitch').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b)setView(b.dataset.view)});
+let lastEff=null;addEventListener('resize',()=>{const v=effView();if(v!==lastEff){lastEff=v;applyView()}});
+
+/* =====================================================================
+   月曆：同一份任務資料的另一種看法
+   - 到期：尚未完成的任務／子任務，放在到期那天（顏色跟清單的層級一致）
+   - 完成：已完成的任務／子任務，放在完成那天
+   ===================================================================== */
+const plusDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return ymd(d)};
+const mondayOf=s=>{const d=parse(s);d.setDate(d.getDate()-(d.getDay()+6)%7);return ymd(d)};
+const dayOf=ms=>ymd(new Date(ms));
+const mdw=s=>{const d=parse(s);return `${d.getMonth()+1}/${d.getDate()}（${WD[d.getDay()]}）`};
+const md=s=>{const d=parse(s);return `${d.getMonth()+1}/${d.getDate()}`};
+function isoWeek(s){const d=parse(s);const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const k=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-k);const y=t.getUTCFullYear();
+  return {y,w:Math.ceil(((t-Date.UTC(y,0,1))/DAY+1)/7)}}
+
+function calIndex(){
+  const m=new Map();const at=day=>{if(!m.has(day))m.set(day,{due:[],done:[]});return m.get(day)};
+  for(const t of state.tasks){if(t.trashed)continue;
+    if(t.done&&t.doneAt)at(dayOf(t.doneAt)).done.push({task:t.id,title:t.title,at:t.doneAt});
+    else if(!t.done&&t.due)at(t.due).due.push({task:t.id,title:t.title,due:t.due});
+    for(const s of t.subs){
+      if(s.done&&s.doneAt)at(dayOf(s.doneAt)).done.push({task:t.id,title:s.title,parent:t.title,at:s.doneAt});
+      else if(!s.done&&!t.done&&s.due)at(s.due).due.push({task:t.id,title:s.title,parent:t.title,due:s.due});
+    }}
+  for(const v of m.values())v.done.sort((a,b)=>a.at-b.at);
+  return m;
+}
+const ciHTML=(it,kind)=>`<span class="ci k-${kind}" role="button" tabindex="0" data-task="${it.task}" ${kind==='due'?`style="--c:${colorFor(daysLeft(it.due))}"`:''} title="${esc((it.parent?it.parent+' › ':'')+it.title)}">${esc(it.title)}</span>`;
+const dItemHTML=(it,kind)=>`<button class="ditem2 k-${kind}" type="button" data-task="${it.task}" ${kind==='due'?`style="--c:${colorFor(daysLeft(it.due))}"`:''}>
+  <span class="dot"></span><span class="t">${it.parent?`<span class="par">${esc(it.parent)} › </span>`:''}${esc(it.title)}</span>
+  <span class="st">${kind==='due'?dayText(daysLeft(it.due)):'完成'}</span></button>`;
+
+function renderCal(){
+  if(!state.loaded)return;
+  const c=ui.cal, idx=calIndex(), today=todayStr();
+  document.querySelectorAll('[data-cal-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.calMode===c.mode));
+  // 並排時，把選取那天的相關任務在清單上標示出來
+  ui.hl=new Set(effView()==='split'&&idx.get(c.sel)?[...idx.get(c.sel).due,...idx.get(c.sel).done].map(x=>x.task):[]);
+  document.querySelectorAll('#groups .task').forEach(el=>el.classList.toggle('hl',ui.hl.has(el.dataset.id)));
+  if(c.mode==='month'){
+    const a=parse(c.anchor);$('#cal-title').textContent=`${a.getFullYear()} 年 ${a.getMonth()+1} 月`;
+    const first=ymd(new Date(a.getFullYear(),a.getMonth(),1)), start=mondayOf(first);
+    let cells='';
+    for(let i=0;i<42;i++){const day=plusDays(start,i),d=parse(day),e=idx.get(day)||{due:[],done:[]};
+      const items=[...e.due.map(x=>ciHTML(x,'due')),...e.done.map(x=>ciHTML(x,'done'))];
+      const MAX=3;
+      cells+=`<div class="mcell${d.getMonth()!==a.getMonth()?' out':''}${day===today?' today':''}${day===c.sel?' sel':''}" role="button" tabindex="0" data-day="${day}" aria-label="${mdw(day)}，到期 ${e.due.length} 項，完成 ${e.done.length} 項">
+        <span class="dn">${d.getDate()}</span>${items.slice(0,MAX).join('')}${items.length>MAX?`<span class="more">還有 ${items.length-MAX} 項</span>`:''}</div>`;
+      if(i===34&&parse(plusDays(start,35)).getMonth()!==a.getMonth())break; // 5 週就夠時不畫第 6 列
+    }
+    const e=idx.get(c.sel)||{due:[],done:[]};
+    $('#cal-body').innerHTML=`<div class="month"><div class="mhead">${'一二三四五六日'.split('').map(x=>`<span>${x}</span>`).join('')}</div><div class="mgrid">${cells}</div></div>
+      <div class="dayd"><div class="dayd-h"><h3>${mdw(c.sel)}${c.sel===today?' · 今天':''}</h3><button class="btn" type="button" data-cal="weekof">看這一週的周報</button></div>
+        ${e.due.length?`<div class="dsec"><span class="lbl">到期</span>${e.due.map(x=>dItemHTML(x,'due')).join('')}</div>`:''}
+        ${e.done.length?`<div class="dsec"><span class="lbl">完成</span>${e.done.map(x=>dItemHTML(x,'done')).join('')}</div>`:''}
+        ${!e.due.length&&!e.done.length?'<div class="empty-day">這天沒有到期或完成的事項。</div>':''}</div>`;
+  }else{
+    const ws=mondayOf(c.anchor),{y,w}=isoWeek(ws);
+    $('#cal-title').textContent=`${y} 第 ${w} 週 · ${md(ws)}–${md(plusDays(ws,6))}`;
+    let rows='';
+    for(let i=0;i<7;i++){const day=plusDays(ws,i),e=idx.get(day)||{due:[],done:[]};
+      rows+=`<div class="wrow${day===today?' today':''}"><div class="wday"><b>${md(day)}</b><span>週${WD[parse(day).getDay()]}</span>${day===today?'<span class="tag">今天</span>':''}</div>
+        <div class="witems">${e.done.map(x=>dItemHTML(x,'done')).join('')}${e.due.map(x=>dItemHTML(x,'due')).join('')}${!e.due.length&&!e.done.length?'<span class="empty-day">—</span>':''}</div></div>`}
+    const r=weekReport(ws), mdText=reportMD(r);
+    $('#cal-body').innerHTML=`<div class="week">${rows}</div>
+      <div class="report"><div class="report-h"><h3>周報</h3>
+        <div class="rstats"><span class="rstat">本週完成 <b>${r.done.length}</b></span><span class="rstat">進行中 <b>${r.progress.length}</b></span><span class="rstat">下週預計 <b>${r.next.length}</b></span>${r.overdue.length?`<span class="rstat">逾期 <b>${r.overdue.length}</b></span>`:''}</div></div>
+        <div class="ractions">
+          <button class="btn primary" type="button" data-cal="export">${window.showDirectoryPicker?'匯出到資料夾':'下載周報'}</button>
+          ${window.showDirectoryPicker?'<button class="btn" type="button" data-cal="download">下載 .md</button>':''}
+          <button class="btn" type="button" data-cal="copy">複製文字</button>
+          <span class="rfolder" id="rfolder"></span>
+        </div>
+        <pre class="mdprev" id="mdprev" tabindex="0" aria-label="周報內容預覽">${esc(mdText)}</pre></div>`;
+    showFolderName();
+  }
+}
+
+/* =====================================================================
+   周報：本週完成／進行中（本週有進度）／已逾期／下週預計
+   ===================================================================== */
+function weekReport(ws){
+  const a=parse(ws).getTime(), b=parse(plusDays(ws,7)).getTime(), nFrom=plusDays(ws,7), nTo=plusDays(ws,13), today=todayStr();
+  const inW=ms=>ms!=null&&ms>=a&&ms<b, inNext=d=>!!d&&d>=nFrom&&d<=nTo;
+  const tasks=state.tasks.filter(t=>!t.trashed);
+  const done=tasks.filter(t=>t.done&&inW(t.doneAt)).sort((x,y)=>x.doneAt-y.doneAt);
+  const progress=tasks.filter(t=>!(t.done&&t.doneAt<b)&&t.subs.some(s=>s.done&&inW(s.doneAt)));
+  const thisWeek=today>=ws&&today<=plusDays(ws,6);
+  const overdue=thisWeek?tasks.filter(t=>!t.done&&!progress.includes(t)&&((t.due&&t.due<today)||t.subs.some(s=>!s.done&&s.due&&s.due<today))):[];
+  const firstNext=t=>[t.due,...t.subs.filter(s=>!s.done).map(s=>s.due)].filter(inNext).sort()[0];
+  const next=tasks.filter(t=>!t.done&&firstNext(t)).sort((x,y)=>firstNext(x)<firstNext(y)?-1:1);
+  const {y,w}=isoWeek(ws);
+  return {ws,we:plusDays(ws,6),y,w,a,b,inW,inNext,nFrom,nTo,done,progress,overdue,next};
+}
+function reportMD(r){
+  const L=[], pad=(txt,ind)=>String(txt).trim().split('\n').join('\n'+ind);
+  const sub=(s,ind,showDone=true)=>{
+    L.push(`${ind}- [${s.done?'x':' '}] ${s.title}${s.done&&s.doneAt&&showDone?`（${mdw(dayOf(s.doneAt))} 完成）`:''}${!s.done&&s.due?`（到期 ${mdw(s.due)}）`:''}`);
+    if(s.note&&s.note.trim())L.push(`${ind}  - 備註：${pad(s.note,ind+'    ')}`);
+  };
+  L.push(`# 工作周報｜${r.y} 第 ${r.w} 週（${mdw(r.ws)}–${mdw(r.we)}）`,'');
+  L.push(`> 本週完成 ${r.done.length} 項、進行中 ${r.progress.length} 項、下週預計 ${r.next.length} 項${r.overdue.length?`、已逾期 ${r.overdue.length} 項`:''}。由 ToDo 於 ${new Date().toLocaleString('zh-TW',{hour12:false})} 匯出。`,'');
+  L.push('## 本週完成','');
+  if(!r.done.length)L.push('（本週沒有完成的項目）','');
+  for(const t of r.done){
+    L.push(`### ${t.title}`,`- 完成日期：${mdw(dayOf(t.doneAt))}`);
+    if(t.due)L.push(`- 原訂到期：${mdw(t.due)}`);
+    if(t.note&&t.note.trim())L.push(`- 備註：${pad(t.note,'  ')}`);
+    if(t.subs.length){L.push('- 子任務：');t.subs.forEach(s=>sub(s,'  '))}
+    L.push('');
+  }
+  L.push('## 進行中（本週有進度）','');
+  if(!r.progress.length)L.push('（無）','');
+  for(const t of r.progress){
+    const doneW=t.subs.filter(s=>s.done&&r.inW(s.doneAt)), rest=t.subs.filter(s=>!s.done);
+    L.push(`### ${t.title}`);
+    if(t.due)L.push(`- 到期日：${mdw(t.due)}`);
+    L.push('- 本週完成的子任務：');doneW.forEach(s=>sub(s,'  '));
+    if(rest.length){L.push('- 尚未完成的子任務：');rest.forEach(s=>sub(s,'  '))}
+    if(t.note&&t.note.trim())L.push(`- 備註：${pad(t.note,'  ')}`);
+    L.push('');
+  }
+  if(r.overdue.length){
+    L.push('## 已逾期、尚未完成','');
+    for(const t of r.overdue){L.push(`- [ ] ${t.title}${t.due?`（原訂 ${mdw(t.due)}）`:''}`);
+      t.subs.filter(s=>!s.done&&s.due&&s.due<todayStr()).forEach(s=>sub(s,'  '));
+      if(t.note&&t.note.trim())L.push(`  - 備註：${pad(t.note,'    ')}`)}
+    L.push('');
+  }
+  L.push(`## 下週預計（${mdw(r.nFrom)}–${mdw(r.nTo)}）`,'');
+  if(!r.next.length)L.push('（下週沒有到期的項目）','');
+  for(const t of r.next){
+    L.push(`- [ ] ${t.title}${t.due?`（到期 ${mdw(t.due)}）`:''}`);
+    t.subs.filter(s=>!s.done&&r.inNext(s.due)).forEach(s=>sub(s,'  '));
+  }
+  return L.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+}
+const reportName=r=>`周報_${r.y}-W${String(r.w).padStart(2,'0')}_${r.ws.slice(5).replace('-','')}-${r.we.slice(5).replace('-','')}.md`;
+
+/* =====================================================================
+   匯出：Edge／Chrome 可指定資料夾直接存檔（只在這台電腦記住「哪個資料夾」，不存任何待辦資料）
+   不支援的瀏覽器（Safari、手機）改成下載檔案
+   ===================================================================== */
+const Prefs={
+  db:null,
+  open(){return this.db||(this.db=new Promise(res=>{try{const q=indexedDB.open('todo-prefs',1);q.onupgradeneeded=()=>q.result.createObjectStore('kv');q.onsuccess=()=>res(q.result);q.onerror=()=>res(null)}catch(e){res(null)}}))},
+  async get(k){const db=await this.open();if(!db)return null;return new Promise(r=>{try{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>r(q.result||null);q.onerror=()=>r(null)}catch(e){r(null)}})},
+  async set(k,v){const db=await this.open();if(!db)return;return new Promise(r=>{try{const tx=db.transaction('kv','readwrite');tx.objectStore('kv').put(v,k);tx.oncomplete=()=>r();tx.onerror=()=>r()}catch(e){r()}})},
+};
+async function showFolderName(){
+  const el=$('#rfolder');if(!el||!window.showDirectoryPicker)return;
+  const dir=await Prefs.get('reportDir');
+  el.innerHTML=dir?`存到：${esc(dir.name)}　<button type="button" data-cal="pickdir">更換資料夾</button>`:'第一次匯出時會請你選擇周報資料夾';
+}
+async function pickDir(){const dir=await window.showDirectoryPicker({id:'todo-report',mode:'readwrite'});await Prefs.set('reportDir',dir);showFolderName();return dir}
+function downloadText(text,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'text/markdown;charset=utf-8'}));a.download=name;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+}
+async function exportReport(how){
+  const r=weekReport(mondayOf(ui.cal.anchor)), text=reportMD(r), name=reportName(r);
+  if(how==='copy'){
+    try{await navigator.clipboard.writeText(text);toast('已複製周報內容')}
+    catch(e){const pre=$('#mdprev');const rg=document.createRange();rg.selectNodeContents(pre);getSelection().removeAllRanges();getSelection().addRange(rg);toast('無法自動複製，已選取內容，請按 Ctrl+C（Mac 按 ⌘C）')}
+    return;
+  }
+  if(how==='download'||!window.showDirectoryPicker){downloadText(text,name);toast(`已下載 ${name}`);return}
+  try{
+    let dir=await Prefs.get('reportDir');
+    if(dir&&(await dir.queryPermission({mode:'readwrite'}))!=='granted'&&(await dir.requestPermission({mode:'readwrite'}))!=='granted')dir=null;
+    if(!dir)dir=await pickDir();
+    const fh=await dir.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(text);await w.close();
+    toast(`已存到「${dir.name}」：${name}`);
+  }catch(e){
+    if(e&&e.name==='AbortError')return; // 使用者取消選擇資料夾
+    toast('無法存到資料夾，已改用下載：'+(e.message||e));downloadText(text,name);
+  }
+}
+
+/* 點月曆上的事項：切到清單（並排時直接在左邊）並展開、捲到那個任務 */
+function focusTask(id){
+  const t=findT(id);if(!t)return;
+  if(effView()==='cal')setView('list');
+  ui.open.add(id);
+  if(t.done){ui.doneOpen.add(id)}
+  render();
+  let el=document.querySelector(`#list-pane [data-id="${id}"]`);
+  if(!el&&t.done){ui.showArchived=true;render();el=document.querySelector(`#list-pane [data-id="${id}"]`)}
+  if(el&&el.closest('#done-drawer'))$('#done-drawer').open=true;
+  if(!el)return;
+  el.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});
+  el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
+}
+
+$('#cal-pane').addEventListener('click',e=>{
+  const item=e.target.closest('[data-task]');if(item){e.stopPropagation();focusTask(item.dataset.task);return}
+  const day=e.target.closest('[data-day]');if(day){ui.cal.sel=day.dataset.day;render();return}
+  const m=e.target.closest('[data-cal-mode]');if(m){ui.cal.mode=m.dataset.calMode;ui.cal.anchor=ui.cal.sel;render();return}
+  const b=e.target.closest('[data-cal]');if(!b)return;const c=ui.cal;
+  switch(b.dataset.cal){
+    case 'prev':case 'next':{const dir=b.dataset.cal==='prev'?-1:1;
+      if(c.mode==='month'){const d=parse(c.anchor);c.anchor=ymd(new Date(d.getFullYear(),d.getMonth()+dir,1));c.sel=c.anchor}
+      else{c.anchor=plusDays(mondayOf(c.anchor),7*dir);c.sel=c.anchor}
+      render();break}
+    case 'today':c.anchor=c.sel=todayStr();render();break;
+    case 'weekof':c.mode='week';c.anchor=c.sel;render();break;
+    case 'export':exportReport('folder');break;
+    case 'download':exportReport('download');break;
+    case 'copy':exportReport('copy');break;
+    case 'pickdir':pickDir().catch(()=>{});break;
+  }
+});
+$('#cal-pane').addEventListener('keydown',e=>{
+  if(e.key!=='Enter'&&e.key!==' ')return;const el=e.target.closest('[data-task],[data-day]');if(!el||e.target!==el)return;e.preventDefault();el.click();
+});
 
 /* ---------- toast ---------- */
 let toastTimer=null,undoFn=null;
@@ -759,6 +1120,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-edit],.ttl-edit'))return; // 標題本身：單擊不展開，雙擊才編輯
   const b=e.target.closest('[data-act]');if(!b)return;const act=b.dataset.act;
   if(act==='retry'){$('#banner').innerHTML='';reload();return}
+  if(act==='toggleArchived'){ui.showArchived=!ui.showArchived;render();return}
   if(act==='hideToggle'){const id=b.closest('[data-tier]').dataset.tier;const tier=state.settings.tiers.find(t=>t.id===id);if(!tier)return;
     tier.hideDone=!tier.hideDone;render();persist(()=>API.updateTier(id,{hideDone:tier.hideDone}));return}
   if(act==='emptyTrash'){e.preventDefault();const gone=state.tasks.filter(t=>t.trashed);if(!gone.length)return;
@@ -979,7 +1341,7 @@ window.addEventListener('pagehide',flushAllWrites);
 
 /* ---------- boot ---------- */
 (async()=>{
-  applyUI();
+  applyUI();applyView();lastEff=effView();
   if(API.isLoggedIn){showApp();await reload()}else showLogin();
   if(document.querySelector('link[rel=manifest]')&&'serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}
 })();
