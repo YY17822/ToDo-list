@@ -1281,7 +1281,7 @@ $('#uiswitch').addEventListener('click',e=>{const b=e.target.closest('[data-ui-s
         {transform:'translateY(0) scale(1.15,.85) rotate(0deg)',offset:.6},
         {transform:'translateY(-.12em) scale(.98,1.03) rotate(0deg)',offset:.75},
         {transform:'translateY(0) scale(1.04,.96) rotate(0deg)',offset:.88},
-        {transform:'translateY(0) scale(1,1) rotate(0deg)'}],opt:{duration:1000}};
+        {transform:'translateY(0) scale(1,1) rotate(0deg)'}],opt:{duration:1700}};
     },
     spin(el){ // 跳上去轉一圈再落下
       const dir=Math.random()<.5?-1:1;
@@ -1292,7 +1292,7 @@ $('#uiswitch').addEventListener('click',e=>{const b=e.target.closest('[data-ui-s
         {transform:`translateY(-.2em) rotate(${360*dir}deg) scale(1,1)`,offset:.7},
         {transform:`translateY(0) rotate(${360*dir}deg) scale(1.15,.85)`,offset:.82},
         {transform:`translateY(-.08em) rotate(${360*dir}deg) scale(1,1)`,offset:.92},
-        {transform:`translateY(0) rotate(${360*dir}deg) scale(1,1)`}],opt:{duration:1300}};
+        {transform:`translateY(0) rotate(${360*dir}deg) scale(1,1)`}],opt:{duration:2300}};
     },
     drift(el){ // 飄到畫面右側再飄回來
       const r=el.getBoundingClientRect();
@@ -1306,7 +1306,7 @@ $('#uiswitch').addEventListener('click',e=>{const b=e.target.closest('[data-ui-s
         {transform:`translate(${dx}px,${up*.3}px) rotate(-6deg)`,offset:.55},
         {transform:`translate(${dx*.5}px,${-up}px) rotate(14deg)`,offset:.75},
         {transform:`translate(${dx*.1}px,${up*.3}px) rotate(-6deg)`,offset:.9},
-        {transform:'translate(0,0) rotate(0deg)'}],opt:{duration:rnd(4200,5200)}};
+        {transform:'translate(0,0) rotate(0deg)'}],opt:{duration:rnd(7500,9000)}};
     },
   };
   const pick=()=>{const x=Math.random();return x<.45?'bounce':x<.8?'spin':'drift'};
@@ -1322,7 +1322,7 @@ $('#uiswitch').addEventListener('click',e=>{const b=e.target.closest('[data-ui-s
   (async function loop(){
     let i=0;
     for(;;){
-      await wait(rnd(700,1400));
+      await wait(rnd(2500,4500)); // 每個字動完後停 2.5–4.5 秒，畫面比較沉穩
       if(document.hidden||calm.matches)continue;
       await play(letters[i],pick());
       i=(i+1)%letters.length;
