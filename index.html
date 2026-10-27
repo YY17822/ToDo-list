@@ -480,6 +480,10 @@ h1{padding-top:.25em}
 .mdprev{margin:0;max-height:420px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font-family:var(--f-mono);font-size:12.5px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--fg)}
 .archived-toggle{font-size:12px;color:var(--accent);text-decoration:underline;padding:6px 0;align-self:flex-start}
 .archived-note{font-size:12px;color:var(--faint);padding:4px 0}
+.ddetail-edit{flex-basis:100%;margin:4px 0 8px;padding:12px;border:1px solid var(--line);border-top:1px dashed var(--line-strong);border-radius:var(--r);background:var(--surface-solid)}
+.ddetail-edit .dfoot{align-items:center}
+.ddetail-edit .hint{font-size:12px;margin:0}
+.ditem.open .dexp .t{color:var(--fg)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -743,18 +747,7 @@ function taskHTML(t){
     if(pending.length&&!t.done)h+=`<ul class="subs-mini" data-act="expand">${pending.map(s=>`<li><span class="t">${esc(s.title)}</span>${s.due?pill(s.due):''}</li>`).join('')}</ul>`;
   }else{
     h+=`<div class="detail">
-      <div class="frow">
-        <div class="field"><label for="td-${t.id}">到期日</label><input type="date" class="date-in" id="td-${t.id}" data-f="due" value="${t.due||''}"></div>
-      </div>
-      <div class="field"><label for="tn-${t.id}">備註</label><textarea id="tn-${t.id}" data-f="note" placeholder="可留空">${esc(t.note)}</textarea></div>
-      <div class="field"><span class="lbl">子任務</span>
-        <div class="sublist">${t.subs.map(s=>subHTML(t,s)).join('')||'<div class="empty-note">還沒有子任務</div>'}</div>
-      </div>
-      <div class="addsub">
-        <input class="text-in" id="as-${t.id}" placeholder="新增子任務，按 Enter 送出" data-addsub>
-        <input type="date" class="date-in" id="asd-${t.id}" aria-label="子任務到期日">
-        <button class="btn" type="button" data-act="addSub">新增子任務</button>
-      </div>
+      ${editFieldsHTML(t,false)}
       <div class="dfoot"><button class="btn danger" type="button" data-act="trash">移到垃圾桶</button><button class="btn" type="button" data-act="expand">收合</button></div>
     </div>`;
   }
@@ -777,23 +770,33 @@ function subHTML(t,s){
 
 /* 已完成區的一筆：可展開查看備註與子任務（唯讀） */
 function doneItemHTML(t,inArchive=false){
-  const open=ui.doneOpen.has(t.id), canOpen=t.subs.length||t.note;
+  const open=ui.doneOpen.has(t.id);
   const doneSubs=t.subs.filter(s=>s.done).length;
   let h=`<div class="ditem${open?' open':''}" data-id="${t.id}">
-    ${canOpen?`<button class="dexp" type="button" data-act="doneExpand" aria-expanded="${open}"><span class="caret" aria-hidden="true"></span><span class="t">${esc(t.title)}${t.subs.length?`（子任務 ${doneSubs}/${t.subs.length}）`:''}</span></button>`
-      :`<span class="t">${esc(t.title)}</span>`}
+    <button class="dexp" type="button" data-act="doneExpand" aria-expanded="${open}" title="展開以檢視或修改內容"><span class="caret" aria-hidden="true"></span><span class="t">${esc(t.title)}${t.subs.length?`（子任務 ${doneSubs}/${t.subs.length}）`:''}${t.note?' · 有備註':''}</span></button>
     <span class="when mono">${t.doneAt?'完成於 '+shortDate(ymd(new Date(t.doneAt))):''}</span>
     <button class="mini" type="button" data-act="undone">取消完成</button>${t.archivedAt?'<button class="mini" type="button" data-act="unarchive">取消封存</button>':inArchive?'':'<button class="mini" type="button" data-act="archive">封存</button>'}<button class="mini" type="button" data-act="trash">丟到垃圾桶</button>`;
-  if(open){
-    h+=`<div class="ddetail">`;
-    if(t.note)h+=`<div class="dnote"><span class="lbl">備註</span><p>${esc(t.note)}</p></div>`;
-    if(t.subs.length)h+=`<ul class="dsubs">${t.subs.map(s=>`<li class="${s.done?'done':''}" style="--c:${colorFor(daysLeft(s.due))}">
-      <span class="dcheck" aria-label="${s.done?'已完成':'未完成'}">${s.done?CHECK:''}</span>
-      <span class="st">${esc(s.title)}</span>${s.due?`<span class="dstr mono">${shortDate(s.due)}</span>`:''}
-      ${s.note?`<p class="snote">${esc(s.note)}</p>`:''}</li>`).join('')}</ul>`;
-    h+=`<p class="hint">要修改內容，請先按「取消完成」讓它回到清單。</p></div>`;
-  }
+  if(open)h+=`<div class="detail ddetail-edit">${editFieldsHTML(t,true)}
+    <div class="dfoot"><span class="hint">修改會直接存到雲端，月曆與周報同步更新。</span><button class="btn" type="button" data-act="doneExpand">收合</button></div></div>`;
   return h+'</div>';
+}
+
+/* 任務的可編輯欄位：清單展開與已完成區共用（已完成的任務多了「標題」與「完成日期」） */
+function editFieldsHTML(t,withTitle){
+  return `${withTitle?`<div class="field"><label for="tdt-${t.id}">標題</label><input class="text-in" id="tdt-${t.id}" data-f="title" value="${esc(t.title)}"></div>`:''}
+      <div class="frow">
+        <div class="field"><label for="td-${t.id}">到期日</label><input type="date" class="date-in" id="td-${t.id}" data-f="due" value="${t.due||''}"></div>
+        ${t.done?`<div class="field"><label for="tdd-${t.id}">完成日期</label><input type="date" class="date-in" id="tdd-${t.id}" data-f="doneDate" value="${t.doneAt?ymd(new Date(t.doneAt)):''}" max="${todayStr()}"></div>`:''}
+      </div>
+      <div class="field"><label for="tn-${t.id}">備註</label><textarea id="tn-${t.id}" data-f="note" placeholder="可留空">${esc(t.note)}</textarea></div>
+      <div class="field"><span class="lbl">子任務</span>
+        <div class="sublist">${t.subs.map(s=>subHTML(t,s)).join('')||'<div class="empty-note">還沒有子任務</div>'}</div>
+      </div>
+      <div class="addsub">
+        <input class="text-in" id="as-${t.id}" placeholder="新增子任務，按 Enter 送出" data-addsub>
+        <input type="date" class="date-in" id="asd-${t.id}" aria-label="子任務到期日">
+        <button class="btn" type="button" data-act="addSub">新增子任務</button>
+      </div>`;
 }
 
 function render(){
@@ -1104,6 +1107,11 @@ function putBack(tasks){ // 復原永久刪除：把整筆（含子任務）重�
   for(const t of tasks)if(!findT(t.id))state.tasks.push(t);render();
   persist(async()=>{for(const t of tasks)await API.createTask(t)},'復原失敗')}
 function patchTask(t,patch){Object.assign(t,patch);render();persist(()=>API.updateTask(t.id,patch))}
+/* 改了完成日期後，任務可能移到已完成區或封存區：自動展開那一區，讓正在編輯的任務不會突然消失 */
+function keepVisible(id){
+  if(document.querySelector(`#list-pane [data-id="${id}"]`))return;
+  ui.doneOpen.add(id);ui.showArchived=true;$('#done-drawer').open=true;render();
+}
 function patchSub(s,patch){Object.assign(s,patch);render();persist(()=>API.updateSub(s.id,patch))}
 const actions={
   toggle(t){const was=t.done;setDone(t.id,!was);
@@ -1146,6 +1154,11 @@ document.addEventListener('change',e=>{
   if(el.dataset.f){const f=el.dataset.f;
     if(f==='title'){const v=el.value.trim();if(!v){el.value=t.title;return}if(v!==t.title)patchTask(t,{title:v})}
     else if(f==='due'){const v=el.value||null;if(v!==t.due)patchTask(t,{due:v})}
+    else if(f==='doneDate'){ // 修改完成日期：保留原本的時間，只換日期
+      if(!el.value){el.value=t.doneAt?ymd(new Date(t.doneAt)):'';return}
+      const old=new Date(t.doneAt||Date.now()),[y,m,d]=el.value.split('-').map(Number);
+      const at=new Date(y,m-1,d,old.getHours(),old.getMinutes(),old.getSeconds()).getTime();
+      if(at!==t.doneAt){patchTask(t,{doneAt:at});keepVisible(t.id)}}
     else flushWrite('tn-'+t.id)}
   else if(el.dataset.sf){const s=t.subs.find(x=>x.id===el.closest('[data-sid]').dataset.sid);if(!s)return;const f=el.dataset.sf;
     if(f==='title'){const v=el.value.trim();if(!v){el.value=s.title;return}if(v!==s.title)patchSub(s,{title:v})}
