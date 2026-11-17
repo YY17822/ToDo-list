@@ -484,6 +484,50 @@ h1{padding-top:.25em}
 .ddetail-edit .dfoot{align-items:center}
 .ddetail-edit .hint{font-size:12px;margin:0}
 .ditem.open .dexp .t{color:var(--fg)}
+/* ===================== 搜尋 ===================== */
+.viewbar{justify-content:space-between}
+.srbox{display:flex;gap:6px;align-items:center;flex:1 1 320px;max-width:560px;min-width:0}
+.srbox input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface-solid);border-radius:var(--r);padding:7px 10px;color:var(--fg)}
+.srbox input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 10px -4px var(--accent)}
+.sr-panel{background:var(--surface-solid);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.sr-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.sr-row>.lbl{width:64px;font-size:12px;color:var(--muted);letter-spacing:.06em;flex:none}
+.sr-help{font-size:12px;color:var(--faint);flex:1 1 260px;min-width:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font-size:13px;padding:4px 12px;border:1px solid var(--line);border-radius:999px;color:var(--muted);background:var(--surface-solid)}
+.chips button:hover{color:var(--fg);border-color:var(--faint)}
+.chips button[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 14%,var(--surface-solid));border-color:var(--accent);color:var(--accent);font-weight:600}
+.sr-dates-in{display:flex;align-items:center;gap:6px}
+#list-pane.searching>*:not(#search-results){display:none}
+.sr-paused{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-radius:var(--r);background:color-mix(in srgb,var(--accent) 8%,var(--surface-solid));border:1px dashed var(--line-strong);font-size:13px;color:var(--muted)}
+#search-results{display:flex;flex-direction:column;gap:12px}
+#search-results:empty{display:none}
+.sr-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+.sr-count{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sr-count b{font-size:16px}
+.sr-crit{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.sr-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.sr-list{display:flex;flex-direction:column;gap:8px}
+.sr-item{background:var(--surface-solid);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.sr-top{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.sr-title{flex:1 1 220px;min-width:0;text-align:left;font-weight:500;font-size:15px;overflow-wrap:anywhere;cursor:pointer}
+.sr-title:hover{color:var(--accent);text-decoration:underline}
+.sr-dates{font-size:11.5px;color:var(--faint)}
+.sbadge{font-size:11.5px;padding:1px 8px;border-radius:999px;white-space:nowrap;border:1px solid}
+.s-active{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.s-done{color:#2F7D55;border-color:#3E9B6B66;background:#3E9B6B14}
+.s-archived{color:var(--muted);border-color:var(--line);background:var(--sunk)}
+.s-trash{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent);background:color-mix(in srgb,var(--danger) 7%,transparent)}
+.sr-snips{display:flex;flex-direction:column;gap:3px;padding-left:2px}
+.sr-snip{font-size:13px;color:var(--muted);overflow-wrap:anywhere}
+.sr-snip .lbl{font-size:11px;letter-spacing:.06em;margin-right:6px;color:var(--faint)}
+.sr-snip.more{font-size:12px;color:var(--faint)}
+.sr-subnote{color:var(--faint)}
+#search-results mark{background:color-mix(in srgb,#FFD54A 60%,transparent);color:inherit;border-radius:2px;padding:0 1px}
+html[data-ui="tech-dark"] #search-results mark{background:color-mix(in srgb,#FFD54A 35%,transparent)}
+html[data-ui="tech-dark"] .s-done{color:#7FD3A4}
+@media (max-width:640px){.sr-row>.lbl{width:100%}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -523,11 +567,27 @@ h1{padding-top:.25em}
     <div class="seg" id="viewswitch" role="group" aria-label="畫面">
       <button type="button" data-view="list">清單</button><button type="button" data-view="cal">月曆</button><button type="button" data-view="split" class="only-wide">並排</button>
     </div>
+    <div class="srbox" role="search">
+      <input type="search" id="sr-q" placeholder="搜尋待辦…（按 / 快速搜尋）" aria-label="搜尋待辦" autocomplete="off">
+      <button class="btn" type="button" id="sr-clear" hidden>清除</button>
+      <button class="btn" type="button" id="sr-filter" aria-expanded="false" aria-controls="sr-panel">篩選</button>
+    </div>
   </nav>
+  <div class="sr-panel" id="sr-panel" hidden>
+    <div class="sr-row"><span class="lbl">比對方式</span><div class="seg"><button type="button" data-sr-mode="fuzzy">模糊</button><button type="button" data-sr-mode="exact">精準</button></div>
+      <span class="sr-help">模糊：字依序出現即可（例：「換線分析」找得到「換線時間分析」），多個關鍵字用空白隔開。精準：必須是完整連續的文字。</span></div>
+    <div class="sr-row"><span class="lbl">搜尋範圍</span><div class="chips"><button type="button" data-sr-scope="all">全部</button><button type="button" data-sr-scope="active">進行中</button><button type="button" data-sr-scope="done">已完成</button><button type="button" data-sr-scope="archived">封存</button><button type="button" data-sr-scope="trash">垃圾桶</button></div></div>
+    <div class="sr-row"><span class="lbl">搜尋欄位</span><div class="chips"><button type="button" data-sr-field="all">全部</button><button type="button" data-sr-field="title">標題</button><button type="button" data-sr-field="note">備註</button><button type="button" data-sr-field="subs">子任務</button></div></div>
+    <div class="sr-row"><span class="lbl">完成日期</span>
+      <div class="sr-dates-in"><input type="date" class="date-in" id="sr-from" aria-label="完成日期起"><span>～</span><input type="date" class="date-in" id="sr-to" aria-label="完成日期迄"></div>
+      <div class="chips"><button type="button" data-sr-range="week">本週</button><button type="button" data-sr-range="lastweek">上週</button><button type="button" data-sr-range="month">本月</button><button type="button" data-sr-range="lastmonth">上月</button><button type="button" data-sr-range="none">不限</button></div></div>
+  </div>
   <div id="banner"></div>
 
   <div class="views">
   <section class="pane" id="list-pane" aria-label="待辦清單">
+  <div class="sr-paused" id="sr-paused" hidden><span>正在檢視搜尋結果中的事項</span><button class="btn" type="button" id="sr-back">← 回到搜尋結果</button></div>
+  <div id="search-results"></div>
   <div class="summary" id="summary"></div>
 
   <form class="add" id="addform" autocomplete="off">
@@ -848,6 +908,7 @@ function render(){
     :'<div class="empty-note">垃圾桶是空的。</div>';
 
   renderCal();
+  renderSearch();
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus();if(sel&&'setSelectionRange' in el){try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}}
   updateBadge();
 }
@@ -1087,6 +1148,227 @@ $('#cal-pane').addEventListener('click',e=>{
 });
 $('#cal-pane').addEventListener('keydown',e=>{
   if(e.key!=='Enter'&&e.key!==' ')return;const el=e.target.closest('[data-task],[data-day]');if(!el||e.target!==el)return;e.preventDefault();el.click();
+});
+
+/* =====================================================================
+   搜尋：在已載入的資料上即時搜尋（不需要修改資料庫）
+   - 比對方式：模糊（字依序出現即可、多個關鍵字用空白隔開）／精準（完整連續的文字）
+   - 範圍：進行中、已完成、封存、垃圾桶
+   - 欄位：標題、備註、子任務（子任務的標題與備註）
+   - 日期區間：依完成日期
+   篩選設定記在這台電腦；關鍵字與日期不記。
+   ===================================================================== */
+const SCOPES=[['active','進行中'],['done','已完成'],['archived','封存'],['trash','垃圾桶']];
+const FIELDS=[['title','標題'],['note','備註'],['subs','子任務']];
+const srDefaults=()=>({mode:'fuzzy',scope:SCOPES.map(x=>x[0]),fields:FIELDS.map(x=>x[0]),sort:'rel'});
+ui.search={q:'',from:'',to:'',open:false,paused:false,...srDefaults()};
+try{const s=JSON.parse(localStorage.getItem('todo-search')||'null');if(s)for(const k of ['mode','scope','fields','sort'])if(s[k]!=null)ui.search[k]=s[k]}catch(e){}
+function saveSearchPrefs(){const s=ui.search;try{localStorage.setItem('todo-search',JSON.stringify({mode:s.mode,scope:s.scope,fields:s.fields,sort:s.sort}))}catch(e){}}
+const hasCriteria=()=>!!(ui.search.q.trim()||ui.search.from||ui.search.to);
+const searchActive=()=>hasCriteria()&&!ui.search.paused;
+
+/* 任務目前在哪一區（與清單的封存規則一致） */
+function statusOf(t){
+  if(t.trashed)return 'trash';
+  if(!t.done)return 'active';
+  const areaFrom=parse(todayStr()).getTime()-(DONE_AREA_DAYS-1)*DAY;
+  return t.archivedAt||(t.doneAt||0)<areaFrom?'archived':'done';
+}
+const STATUS_LABEL={active:'進行中',done:'已完成',archived:'封存',trash:'垃圾桶'};
+
+/* 比對：全形半形、大小寫視為相同；一個字對一個字，才能準確標出符合的位置 */
+const normCh=c=>{const n=c.normalize('NFKC').toLowerCase();return n.length===1?n:c.toLowerCase()};
+const normChars=s=>[...String(s||'')].map(normCh);
+function findToken(chars,tok,fuzzy){
+  const n=chars.length,m=tok.length;if(!m||m>n)return null;
+  for(let i=0;i+m<=n;i++){let k=0;while(k<m&&chars[i+k]===tok[k])k++;
+    if(k===m)return {score:100+(i===0?10:0),idx:Array.from({length:m},(_,j)=>i+j)}}
+  if(!fuzzy||m<2)return null;
+  let best=null;
+  for(let i=0;i<n;i++){if(chars[i]!==tok[0])continue;const idx=[i];
+    for(let j=i+1,k=1;j<n&&k<m;j++)if(chars[j]===tok[k]){idx.push(j);k++}
+    if(idx.length===m){const span=idx[m-1]-i+1;if(!best||span<best.span)best={span,idx}}}
+  if(!best||best.span>Math.max(m*4,m+10))return null; // 字分散太開就不算
+  return {score:60*m/best.span,idx:best.idx};
+}
+function searchTask(t){
+  const s=ui.search,fuzzy=s.mode==='fuzzy',q=s.q.trim();
+  const texts=[];
+  if(s.fields.includes('title'))texts.push({f:'title',w:3,text:t.title});
+  if(s.fields.includes('note')&&t.note)texts.push({f:'note',w:1,text:t.note});
+  if(s.fields.includes('subs'))for(const sub of t.subs){texts.push({f:'sub',w:2,text:sub.title,sub});if(sub.note)texts.push({f:'subnote',w:1.5,text:sub.note,sub})}
+  if(!q)return {score:0,hits:new Map()};
+  texts.forEach(x=>x.chars=normChars(x.text));
+  const tokens=fuzzy?q.split(/\s+/).filter(Boolean):[q];
+  const hits=new Map();let total=0;
+  for(const tk of tokens){const tok=normChars(tk);let best=0,found=false;
+    for(const x of texts){const r=findToken(x.chars,tok,fuzzy);if(!r)continue;found=true;
+      if(!hits.has(x))hits.set(x,new Set());r.idx.forEach(i=>hits.get(x).add(i));best=Math.max(best,r.score*x.w)}
+    if(!found)return null;total+=best}
+  return {score:total,hits};
+}
+function runSearch(){
+  const s=ui.search;
+  const fromMs=s.from?parse(s.from).getTime():-Infinity, toMs=s.to?parse(plusDays(s.to,1)).getTime():Infinity;
+  const out=[];
+  for(const t of state.tasks){
+    const st=statusOf(t);if(!s.scope.includes(st))continue;
+    if(s.from||s.to){if(!t.doneAt||t.doneAt<fromMs||t.doneAt>=toMs)continue}
+    const r=searchTask(t);if(!r)continue;
+    out.push({t,st,...r});
+  }
+  const when=x=>x.t.doneAt||x.t.created||0;
+  out.sort(s.sort==='rel'&&s.q.trim()?(a,b)=>b.score-a.score||when(b)-when(a):(a,b)=>when(b)-when(a));
+  return out;
+}
+
+/* 顯示：符合的字用螢光底色標出 */
+function markText(text,idx){
+  const ch=[...String(text||'')];if(!idx||!idx.size)return esc(text);
+  let h='',open=false;
+  ch.forEach((c,i)=>{const on=idx.has(i);if(on&&!open){h+='<mark>';open=true}if(!on&&open){h+='</mark>';open=false}h+=esc(c)});
+  return h+(open?'</mark>':'');
+}
+function snippet(text,idx,before=18,len=70){
+  const ch=[...String(text||'')];const first=idx&&idx.size?Math.min(...idx):0;
+  const a=Math.max(0,first-before),b=Math.min(ch.length,a+len);
+  const sub=new Set([...(idx||[])].filter(i=>i>=a&&i<b).map(i=>i-a));
+  return (a>0?'…':'')+markText(ch.slice(a,b).join(''),sub)+(b<ch.length?'…':'');
+}
+function resultHTML(r){
+  const {t,st,hits}=r,get=f=>[...hits].filter(([x])=>x.f===f);
+  const titleHit=get('title')[0];
+  const noteHit=get('note')[0];
+  const subRows=new Map();
+  for(const [x,idx] of hits)if(x.sub){const row=subRows.get(x.sub)||{};row[x.f]=idx;subRows.set(x.sub,row)}
+  const dates=[t.due?`到期 ${shortDate(t.due)}`:'',t.doneAt?`完成 ${shortDate(dayOf(t.doneAt))}`:''].filter(Boolean).join(' · ');
+  let h=`<article class="sr-item" data-id="${t.id}">
+    <div class="sr-top"><span class="sbadge s-${st}">${STATUS_LABEL[st]}</span>
+      <button class="sr-title" type="button" data-sr-open="${t.id}" title="在清單中開啟">${markText(t.title,titleHit&&titleHit[1])}</button>
+      <span class="sr-dates mono">${dates}</span>
+      ${st==='trash'?'<button class="mini" type="button" data-act="restore">還原</button>':''}</div>`;
+  const snips=[];
+  if(noteHit)snips.push(`<div class="sr-snip"><span class="lbl">備註</span>${snippet(t.note,noteHit[1])}</div>`);
+  [...subRows].slice(0,3).forEach(([sub,row])=>snips.push(`<div class="sr-snip"><span class="lbl">子任務</span>${sub.done?'✓ ':''}${markText(sub.title,row.sub)}${row.subnote?`<span class="sr-subnote">（備註：${snippet(sub.note,row.subnote,10,40)}）</span>`:''}</div>`));
+  if(subRows.size>3)snips.push(`<div class="sr-snip more">還有 ${subRows.size-3} 個子任務符合</div>`);
+  if(!ui.search.q.trim()&&t.subs.length)snips.push(`<div class="sr-snip"><span class="lbl">子任務</span>${t.subs.filter(s=>s.done).length}/${t.subs.length} 完成</div>`);
+  return h+(snips.length?`<div class="sr-snips">${snips.join('')}</div>`:'')+'</article>';
+}
+
+function criteriaText(){
+  const s=ui.search,all=(sel,list)=>sel.length===list.length?'全部':list.filter(x=>sel.includes(x[0])).map(x=>x[1]).join('、');
+  return [s.q.trim()?`關鍵字「${s.q.trim()}」（${s.mode==='fuzzy'?'模糊':'精準'}）`:'',
+    `範圍：${all(s.scope,SCOPES)}`, s.q.trim()?`欄位：${all(s.fields,FIELDS)}`:'',
+    (s.from||s.to)?`完成日期：${s.from?mdw(s.from):'不限'}～${s.to?mdw(s.to):'不限'}`:''].filter(Boolean).join('｜');
+}
+function renderSearch(){
+  const s=ui.search,act=searchActive()&&state.loaded;
+  // 篩選面板的狀態
+  $('#sr-panel').hidden=!s.open;$('#sr-filter').setAttribute('aria-expanded',s.open);
+  const nonDefault=(s.mode!=='fuzzy')+(s.scope.length!==SCOPES.length)+(s.fields.length!==FIELDS.length)+(!!(s.from||s.to));
+  $('#sr-filter').textContent=nonDefault?`篩選（${nonDefault}）`:'篩選';
+  document.querySelectorAll('[data-sr-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.srMode===s.mode));
+  document.querySelectorAll('[data-sr-scope]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.srScope==='all'?s.scope.length===SCOPES.length:s.scope.length!==SCOPES.length&&s.scope.includes(b.dataset.srScope)));
+  document.querySelectorAll('[data-sr-field]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.srField==='all'?s.fields.length===FIELDS.length:s.fields.length!==FIELDS.length&&s.fields.includes(b.dataset.srField)));
+  if($('#sr-from').value!==s.from)$('#sr-from').value=s.from;
+  if($('#sr-to').value!==s.to)$('#sr-to').value=s.to;
+  $('#sr-clear').hidden=!hasCriteria();
+  $('#list-pane').classList.toggle('searching',act);
+  $('#sr-paused').hidden=!(hasCriteria()&&s.paused);
+  if(!act){$('#search-results').innerHTML='';return}
+  const res=runSearch();
+  $('#search-results').innerHTML=`<div class="sr-head">
+      <div class="sr-count"><b>找到 ${res.length} 筆</b><span class="sr-crit">${esc(criteriaText())}</span></div>
+      <div class="sr-actions">
+        <div class="seg" role="group" aria-label="排序"><button type="button" data-sr-sort="rel" aria-pressed="${s.sort==='rel'}">相關程度</button><button type="button" data-sr-sort="date" aria-pressed="${s.sort==='date'}">日期</button></div>
+        <button class="btn primary" type="button" data-sr-export="folder" ${res.length?'':'disabled'}>${window.showDirectoryPicker?'匯出 Markdown 到資料夾':'下載 Markdown'}</button>
+        ${window.showDirectoryPicker?`<button class="btn" type="button" data-sr-export="download" ${res.length?'':'disabled'}>下載 .md</button>`:''}
+        <button class="btn" type="button" data-sr-export="copy" ${res.length?'':'disabled'}>複製</button>
+        <button class="btn" type="button" data-sr-clear>清除搜尋</button>
+      </div></div>
+    ${res.length?`<div class="sr-list">${res.map(resultHTML).join('')}</div>`:'<div class="loading">沒有符合的事項。可以試試「模糊」比對，或放寬範圍與欄位。</div>'}`;
+}
+
+/* 匯出搜尋結果成 Markdown（格式與周報一致，方便交給 AI 產出月報） */
+function searchMD(res){
+  const L=[],pad=(txt,ind)=>String(txt).trim().split('\n').join('\n'+ind),s=ui.search;
+  const title=(s.from||s.to)&&!s.q.trim()?`工作紀錄｜完成於 ${s.from?mdw(s.from):'不限'}～${s.to?mdw(s.to):'不限'}`:`搜尋結果｜${s.q.trim()||'全部'}`;
+  L.push(`# ${title}`,'',`> 條件：${criteriaText()}｜共 ${res.length} 項。由 ToDo 於 ${new Date().toLocaleString('zh-TW',{hour12:false})} 匯出。`,'');
+  for(const {t,st} of res){
+    L.push(`## ${t.title}`,`- 狀態：${STATUS_LABEL[st]}`);
+    if(t.doneAt)L.push(`- 完成日期：${mdw(dayOf(t.doneAt))}`);
+    if(t.due)L.push(`- 到期日：${mdw(t.due)}`);
+    if(t.note&&t.note.trim())L.push(`- 備註：${pad(t.note,'  ')}`);
+    if(t.subs.length){L.push('- 子任務：');for(const x of t.subs){
+      L.push(`  - [${x.done?'x':' '}] ${x.title}${x.done&&x.doneAt?`（${mdw(dayOf(x.doneAt))} 完成）`:''}${!x.done&&x.due?`（到期 ${mdw(x.due)}）`:''}`);
+      if(x.note&&x.note.trim())L.push(`    - 備註：${pad(x.note,'      ')}`)}}
+    L.push('');
+  }
+  return L.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
+}
+async function exportSearch(how){
+  const res=runSearch();if(!res.length)return;
+  const text=searchMD(res),s=ui.search;
+  const name=(s.from||s.to)&&!s.q.trim()
+    ?`工作紀錄_${(s.from||'start').replace(/-/g,'')}-${(s.to||todayStr()).replace(/-/g,'')}.md`
+    :`搜尋結果_${s.q.trim().replace(/[\\/:*?"<>|\s]+/g,'_').slice(0,30)||'全部'}_${todayStr().replace(/-/g,'')}.md`;
+  if(how==='copy'){try{await navigator.clipboard.writeText(text);toast('已複製搜尋結果')}catch(e){downloadText(text,name);toast(`無法自動複製，已改為下載 ${name}`)}return}
+  if(how==='download'||!window.showDirectoryPicker){downloadText(text,name);toast(`已下載 ${name}`);return}
+  try{
+    let dir=await Prefs.get('reportDir');
+    if(dir&&(await dir.queryPermission({mode:'readwrite'}))!=='granted'&&(await dir.requestPermission({mode:'readwrite'}))!=='granted')dir=null;
+    if(!dir)dir=await pickDir();
+    const fh=await dir.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(text);await w.close();
+    toast(`已存到「${dir.name}」：${name}`);
+  }catch(e){if(e&&e.name==='AbortError')return;toast('無法存到資料夾，已改用下載：'+(e.message||e));downloadText(text,name)}
+}
+
+/* 事件 */
+function updateSearch(){ui.search.paused=false;if(searchActive()&&effView()==='cal')setView('list');renderSearch()}
+let srTimer=null;
+$('#sr-q').addEventListener('input',e=>{clearTimeout(srTimer);srTimer=setTimeout(()=>{ui.search.q=e.target.value;updateSearch()},150)});
+$('#sr-q').addEventListener('keydown',e=>{if(e.key==='Escape'){e.target.value='';ui.search.q='';updateSearch()}});
+$('#sr-filter').addEventListener('click',()=>{ui.search.open=!ui.search.open;renderSearch()});
+function toggleIn(list,all,key){
+  if(key==='all')return all.map(x=>x[0]);
+  if(list.length===all.length)return [key];               // 原本是全部 → 只選這一個
+  const next=list.includes(key)?list.filter(k=>k!==key):[...list,key];
+  return next.length?all.map(x=>x[0]).filter(k=>next.includes(k)):all.map(x=>x[0]); // 全部取消 → 回到全部
+}
+$('#sr-panel').addEventListener('click',e=>{
+  const s=ui.search,b=e.target.closest('button');if(!b)return;
+  if(b.dataset.srMode){s.mode=b.dataset.srMode}
+  else if(b.dataset.srScope){s.scope=toggleIn(s.scope,SCOPES,b.dataset.srScope)}
+  else if(b.dataset.srField){s.fields=toggleIn(s.fields,FIELDS,b.dataset.srField)}
+  else if(b.dataset.srRange){const r=b.dataset.srRange,today=todayStr(),mon=mondayOf(today),d=parse(today);
+    const ym=(y,m)=>ymd(new Date(y,m,1)),last=(y,m)=>ymd(new Date(y,m+1,0));
+    if(r==='week'){s.from=mon;s.to=plusDays(mon,6)}
+    else if(r==='lastweek'){s.from=plusDays(mon,-7);s.to=plusDays(mon,-1)}
+    else if(r==='month'){s.from=ym(d.getFullYear(),d.getMonth());s.to=last(d.getFullYear(),d.getMonth())}
+    else if(r==='lastmonth'){s.from=ym(d.getFullYear(),d.getMonth()-1);s.to=last(d.getFullYear(),d.getMonth()-1)}
+    else {s.from='';s.to=''}}
+  else return;
+  saveSearchPrefs();updateSearch();
+});
+$('#sr-from').addEventListener('change',e=>{ui.search.from=e.target.value;updateSearch()});
+$('#sr-to').addEventListener('change',e=>{ui.search.to=e.target.value;updateSearch()});
+function clearSearch(){Object.assign(ui.search,{q:'',from:'',to:'',paused:false});$('#sr-q').value='';renderSearch()}
+$('#sr-clear').addEventListener('click',()=>{clearSearch();$('#sr-q').focus()});
+$('#sr-back').addEventListener('click',()=>{ui.search.paused=false;renderSearch();$('#list-pane').scrollIntoView({block:'start'})});
+$('#search-results').addEventListener('click',e=>{
+  const o=e.target.closest('[data-sr-open]');
+  if(o){const id=o.dataset.srOpen,t=findT(id);if(!t)return;ui.search.paused=true;
+    if(t.trashed){renderSearch();$('#trash-drawer').open=true;render();const el=document.querySelector(`#trash-list [data-id="${id}"]`);
+      if(el){el.scrollIntoView({block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}}
+    else focusTask(id);
+    return}
+  const so=e.target.closest('[data-sr-sort]');if(so){ui.search.sort=so.dataset.srSort;saveSearchPrefs();renderSearch();return}
+  const ex=e.target.closest('[data-sr-export]');if(ex){exportSearch(ex.dataset.srExport);return}
+  if(e.target.closest('[data-sr-clear]')){clearSearch();return}
+});
+document.addEventListener('keydown',e=>{ // 按 / 或 Ctrl／⌘+K 跳到搜尋框
+  const ae=document.activeElement,typing=ae&&ae.matches&&ae.matches('input,textarea,select,[contenteditable]');
+  if(((e.key==='/'&&!typing)||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'))&&!$('#app').hidden){e.preventDefault();$('#sr-q').focus();$('#sr-q').select()}
 });
 
 /* ---------- toast ---------- */
