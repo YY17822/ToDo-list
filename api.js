@@ -9,6 +9,7 @@
 //          trashedAt(trashed_at), archivedAt(archived_at), created(created_at), subs[]
 //   sub  : id, title, due(due_date), note, done(is_done), doneAt(done_at), sortOrder(sort_order)
 //   tier : id, name, max(max_days), color, hideDone(hide_done)
+//   label: id, name, color, sortOrder(sort_order)；task.labels = 這個任務掛的標籤 id 陣列（來自 task_labels）
 //   settings : groupBy(group_by), ui(ui_theme)
 // 時間在畫面端一律用毫秒數字（Date.now()），日期用 'YYYY-MM-DD' 字串。
 // =====================================================================
@@ -92,7 +93,7 @@
       if (j?.code === '23505') msg = '有重複的資料（例如兩個層級的天數上限相同）。';
       if (j?.code === '42501') msg = '沒有權限存取資料表，請確認 schema.sql 已執行，且 todo schema 已加入 Exposed schemas。';
       if (j?.code === 'PGRST106') msg = 'todo schema 尚未開放給 API，請到 Supabase 的 API 設定加入 Exposed schemas。';
-      if (j?.code === 'PGRST205' || j?.code === '42P01') msg = '找不到資料表，請先在 Supabase 執行 schema.sql。';
+      if (j?.code === 'PGRST205' || j?.code === '42P01') msg = /label/.test(j?.message || '') ? '找不到標籤資料表，請先在 Supabase 執行 supabase/004_labels.sql。' : '找不到資料表，請先在 Supabase 執行 schema.sql。';
       if ((j?.code === 'PGRST204' || j?.code === '42703') && /archived_at/.test(j?.message || '')) msg = '資料表還沒有「封存」欄位，請先在 Supabase 執行 supabase/003_tasks_archived_at.sql。';
       throw new ApiError(msg, r.status, j?.code);
     }
@@ -110,6 +111,7 @@
     subs: (r.subtasks || []).map(fromSub).sort((a, b) => a.sortOrder - b.sortOrder),
   });
   const fromTier = r => ({ id: r.id, name: r.name, max: r.max_days, color: r.color, hideDone: r.hide_done });
+  const fromLabel = r => ({ id: r.id, name: r.name, color: r.color, sortOrder: r.sort_order });
 
   const TASK_COLS = { title: 'title', due: 'due_date', note: 'note', done: 'is_done', doneAt: 'done_at', trashed: 'is_trashed', trashedAt: 'trashed_at', archivedAt: 'archived_at', created: 'created_at' };
   const SUB_COLS = { title: 'title', due: 'due_date', note: 'note', done: 'is_done', doneAt: 'done_at', sortOrder: 'sort_order' };
@@ -156,6 +158,19 @@
         rest('GET', '/tiers?select=*'),
         rest('GET', '/user_settings?select=*'),
       ]);
+      // 標籤：還沒執行 004_labels.sql 時不影響其他功能，只是標籤功能暫時不能用
+      let labelRows = [], linkRows = [], labelsReady = true;
+      try {
+        [labelRows, linkRows] = await Promise.all([
+          rest('GET', '/labels?select=*&order=sort_order.asc,created_at.asc'),
+          rest('GET', '/task_labels?select=task_id,label_id'),
+        ]);
+      } catch (e) {
+        if (e.needsLogin || !(e.status >= 400 && e.status < 500)) throw e;
+        labelsReady = false;
+      }
+      const linksByTask = new Map();
+      for (const l of linkRows) { if (!linksByTask.has(l.task_id)) linksByTask.set(l.task_id, []); linksByTask.get(l.task_id).push(l.label_id); }
       let tiers = tierRows.map(fromTier);
       if (!tiers.length) {
         tiers = defaultTiers();
@@ -169,7 +184,8 @@
         s = made[0];
       }
       return {
-        tasks: taskRows.map(fromTask),
+        tasks: taskRows.map(r => ({ ...fromTask(r), labels: linksByTask.get(r.id) || [] })),
+        labels: labelRows.map(fromLabel), labelsReady,
         settings: { tiers, groupBy: s.group_by, ui: s.ui_theme, userId: s.user_id },
       };
     },
@@ -178,6 +194,7 @@
     async createTask(t) {
       await rest('POST', '/tasks', { body: taskRow(t), prefer: 'return=minimal' });
       if (t.subs?.length) await rest('POST', '/subtasks', { body: t.subs.map(s => subRow(t.id, s)), prefer: 'return=minimal' });
+      if (t.labels?.length) await rest('POST', '/task_labels', { body: t.labels.map(id => ({ task_id: t.id, label_id: id })), prefer: 'resolution=ignore-duplicates,return=minimal' });
     },
     updateTask: (id, patch) => rest('PATCH', '/tasks?id=eq.' + encodeURIComponent(id), { body: toRow(patch, TASK_COLS), prefer: 'return=minimal' }),
     /** 一次修改多筆母任務（全部封存用） */
@@ -196,6 +213,16 @@
       if (removed.length) await rest('DELETE', '/tiers?id=' + inList(removed), { prefer: 'return=minimal' });
       await rest('POST', '/tiers?on_conflict=id', { body: tiers.map(tierRow), prefer: 'resolution=merge-duplicates,return=minimal' });
     },
+
+    /** 標籤：儲存整組（先刪除被移除的，再一次新增／更新其餘的；順序存在 sort_order） */
+    async saveLabels(labels, previous) {
+      const keep = new Set(labels.map(l => l.id));
+      const removed = previous.filter(l => !keep.has(l.id)).map(l => l.id);
+      if (removed.length) await rest('DELETE', '/labels?id=' + inList(removed), { prefer: 'return=minimal' });
+      if (labels.length) await rest('POST', '/labels?on_conflict=id', { body: labels.map((l, i) => ({ id: l.id, name: l.name, color: l.color, sort_order: i })), prefer: 'resolution=merge-duplicates,return=minimal' });
+    },
+    addTaskLabel: (taskId, labelId) => rest('POST', '/task_labels', { body: { task_id: taskId, label_id: labelId }, prefer: 'resolution=ignore-duplicates,return=minimal' }),
+    removeTaskLabel: (taskId, labelId) => rest('DELETE', '/task_labels?task_id=eq.' + encodeURIComponent(taskId) + '&label_id=eq.' + encodeURIComponent(labelId), { prefer: 'return=minimal' }),
 
     updateSettings: (userId, patch) => rest('PATCH', '/user_settings?user_id=eq.' + encodeURIComponent(userId), { body: toRow(patch, SET_COLS), prefer: 'return=minimal' }),
   };

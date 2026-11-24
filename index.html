@@ -528,6 +528,33 @@ h1{padding-top:.25em}
 html[data-ui="tech-dark"] #search-results mark{background:color-mix(in srgb,#FFD54A 35%,transparent)}
 html[data-ui="tech-dark"] .s-done{color:#7FD3A4}
 @media (max-width:640px){.sr-row>.lbl{width:100%}}
+/* ===================== 標籤 ===================== */
+.labelbar{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;align-items:center}
+.labelbar:empty{display:none}
+.tdot{width:9px;height:9px;border-radius:50%;background:var(--c);display:inline-block;flex:none}
+.tdots{display:inline-flex;gap:4px;margin-left:8px;vertical-align:middle}
+.lchip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:3px 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--c) 45%,var(--line));background:color-mix(in srgb,var(--c) 10%,var(--surface-solid));color:var(--fg)}
+.lchip b{font-family:var(--f-mono);font-weight:600;color:color-mix(in srgb,var(--c) 70%,var(--fg))}
+.lchip.zero{opacity:.55}
+.lchip:hover{border-color:var(--c);opacity:1}
+.lchip[aria-pressed="true"]{background:var(--c);border-color:var(--c);color:#fff;text-shadow:0 0 2px rgba(0,0,0,.35)}
+.lchip[aria-pressed="true"] b{color:#fff}
+.lchip[aria-pressed="true"] .tdot{background:#fff}
+.lmanage{font-size:12px;color:var(--accent);text-decoration:underline;padding:3px 4px}
+.chips .lmanage{border:0;background:none;color:var(--accent);padding:4px 6px}
+.lpick{display:inline-flex;align-items:center;gap:6px}
+.chips .lpick[aria-pressed="true"]{background:color-mix(in srgb,var(--c) 16%,var(--surface-solid));border-color:var(--c);color:var(--fg)}
+.tlabel{font-size:11.5px;padding:1px 8px;border-radius:999px;white-space:nowrap;background:color-mix(in srgb,var(--c) 14%,var(--surface-solid));color:color-mix(in srgb,var(--c) 65%,var(--fg));border:1px solid color-mix(in srgb,var(--c) 40%,transparent)}
+.label-table{display:flex;flex-direction:column;gap:6px}
+.lrow{display:grid;grid-template-columns:36px minmax(0,1fr) auto 28px 28px auto;gap:6px;align-items:center}
+.lrow input[type=color]{width:34px;height:30px;border:1px solid var(--line);border-radius:8px;padding:2px;background:var(--surface-solid)}
+.lrow .text-in{padding:5px 8px}
+.lcount{font-size:12px;color:var(--muted);white-space:nowrap}
+.lrow .x{color:var(--faint);font-size:16px;line-height:1;min-width:24px}
+.lrow .x:hover:not(:disabled){color:var(--fg)}
+.lrow .x:disabled{opacity:.3;cursor:default}
+.lrow .x.del:hover{color:var(--danger)}
+.lrow.confirm .x.del{color:var(--danger);font-size:12px;font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -553,6 +580,7 @@ html[data-ui="tech-dark"] .s-done{color:#7FD3A4}
       <h1 aria-label="ToDo"><span class="logo" aria-hidden="true"><span class="hop" style="--i:0;--tilt:-8deg">T</span><span class="hop" style="--i:1;--tilt:8deg">o</span><span class="hop" style="--i:2;--tilt:-8deg">D</span><span class="hop" style="--i:3;--tilt:8deg">o</span></span></h1>
       <div class="today mono" id="today"></div>
       <div class="sync" id="sync" data-s="ok" role="status">已同步</div>
+      <div class="labelbar" id="labelbar" aria-label="標籤"></div>
     </div>
     <div class="tools">
       <div class="uiswitch" id="uiswitch" role="group" aria-label="介面風格">
@@ -578,6 +606,7 @@ html[data-ui="tech-dark"] .s-done{color:#7FD3A4}
       <span class="sr-help">模糊：字依序出現即可（例：「換線分析」找得到「換線時間分析」），多個關鍵字用空白隔開。精準：必須是完整連續的文字。</span></div>
     <div class="sr-row"><span class="lbl">搜尋範圍</span><div class="chips"><button type="button" data-sr-scope="all">全部</button><button type="button" data-sr-scope="active">進行中</button><button type="button" data-sr-scope="done">已完成</button><button type="button" data-sr-scope="archived">封存</button><button type="button" data-sr-scope="trash">垃圾桶</button></div></div>
     <div class="sr-row"><span class="lbl">搜尋欄位</span><div class="chips"><button type="button" data-sr-field="all">全部</button><button type="button" data-sr-field="title">標題</button><button type="button" data-sr-field="note">備註</button><button type="button" data-sr-field="subs">子任務</button></div></div>
+    <div class="sr-row" id="sr-label-row"><span class="lbl">標籤</span><div class="chips" id="sr-labels"></div></div>
     <div class="sr-row"><span class="lbl">完成日期</span>
       <div class="sr-dates-in"><input type="date" class="date-in" id="sr-from" aria-label="完成日期起"><span>～</span><input type="date" class="date-in" id="sr-to" aria-label="完成日期迄"></div>
       <div class="chips"><button type="button" data-sr-range="week">本週</button><button type="button" data-sr-range="lastweek">上週</button><button type="button" data-sr-range="month">本月</button><button type="button" data-sr-range="lastmonth">上月</button><button type="button" data-sr-range="none">不限</button></div></div>
@@ -630,6 +659,20 @@ html[data-ui="tech-dark"] .s-done{color:#7FD3A4}
   </section>
   </div>
 </div>
+
+<dialog id="dlg-labels"><div class="dlg">
+  <header><h3>標籤設定</h3></header>
+  <div class="body">
+    <p class="hint">標籤可以加在任務上，例如「待追蹤」「等回覆」。一個任務可以有多個標籤。刪除標籤只會把它從任務上拿掉，不會刪除任務。</p>
+    <div class="label-table" id="label-table"></div>
+    <div><button class="btn" type="button" id="label-add">新增標籤</button></div>
+    <p class="err" id="label-err" hidden></p>
+  </div>
+  <footer>
+    <button class="btn" type="button" data-close>取消</button>
+    <button class="btn primary" type="button" id="label-save">儲存</button>
+  </footer>
+</div></dialog>
 
 <dialog id="dlg-settings"><div class="dlg">
   <header><h3>層級設定</h3></header>
@@ -693,7 +736,7 @@ const dayText=d=>d==null?'無期限':d<0?`逾期 ${-d} 天`:d===0?'今天':d===1
 /* ---------- 資料：全部來自雲端（透過 api.js），畫面只保留目前這一份在記憶體 ---------- */
 const API=window.TodoAPI;
 const emptySettings=()=>({tiers:[],groupBy:'earliest',ui:null,userId:null});
-let state={tasks:[],settings:emptySettings(),loaded:false};
+let state={tasks:[],settings:emptySettings(),loaded:false,labels:[],labelsReady:false};
 const ui={open:new Set(),subNote:new Set(),doneOpen:new Set(),lastDay:todayStr(),hl:new Set(),showArchived:false,
   cal:{mode:'month',anchor:todayStr(),sel:todayStr()}};
 /* 封存規則：完成的事項在組別裡最多留到隔天；已完成區只顯示最近 7 天；更早的自動封存。
@@ -733,7 +776,7 @@ function reload(){
   loading=(async()=>{
     try{
       const d=await API.loadAll();
-      state.tasks=d.tasks;state.settings=d.settings;state.loaded=true;
+      state.tasks=d.tasks;state.settings=d.settings;state.labels=d.labels||[];state.labelsReady=!!d.labelsReady;state.loaded=true;
       $('#banner').innerHTML='';applyUI();render();setSync('ok');
     }catch(e){
       if(e.needsLogin){showLogin(e.message);return}
@@ -747,7 +790,7 @@ function reload(){
 
 /* 登入／登出畫面切換 */
 function showLogin(msg){
-  state={tasks:[],settings:emptySettings(),loaded:false};
+  state={tasks:[],settings:emptySettings(),loaded:false,labels:[],labelsReady:false};
   render(); // 清掉畫面上的資料
   $('#app').hidden=true;$('#login').hidden=false;
   const err=$('#li-err');err.hidden=!msg;err.textContent=msg||'';
@@ -799,7 +842,7 @@ function taskHTML(t){
   let h=`<article class="task${t.done?' done':''}${open?' open':''}${ui.hl.has(t.id)?' hl':''}" data-id="${t.id}">
   <div class="row" data-act="expand" role="button" tabindex="0" aria-expanded="${open}" title="點一下展開／收合">
     <button class="check" type="button" data-act="toggle" aria-pressed="${t.done}" aria-label="標記完成">${CHECK}</button>
-    <div class="ttl"><span class="ttl-text" data-edit title="點兩下編輯標題">${esc(t.title)}</span>${meta.length?`<span class="ttl-meta">${meta.join(' · ')}</span>`:''}</div>
+    <div class="ttl"><span class="ttl-text" data-edit title="點兩下編輯標題">${esc(t.title)}${dotsHTML(t)}</span>${meta.length?`<span class="ttl-meta">${meta.join(' · ')}</span>`:''}</div>
     <span class="due"><span class="pill" style="--c:${colorFor(d)}">${dayText(d)}</span>${t.due?`<span class="dstr mono">${shortDate(t.due)}</span>`:''}</span>
   </div>`;
   if(!open){
@@ -833,12 +876,35 @@ function doneItemHTML(t,inArchive=false){
   const open=ui.doneOpen.has(t.id);
   const doneSubs=t.subs.filter(s=>s.done).length;
   let h=`<div class="ditem${open?' open':''}" data-id="${t.id}">
-    <button class="dexp" type="button" data-act="doneExpand" aria-expanded="${open}" title="展開以檢視或修改內容"><span class="caret" aria-hidden="true"></span><span class="t">${esc(t.title)}${t.subs.length?`（子任務 ${doneSubs}/${t.subs.length}）`:''}${t.note?' · 有備註':''}</span></button>
+    <button class="dexp" type="button" data-act="doneExpand" aria-expanded="${open}" title="展開以檢視或修改內容"><span class="caret" aria-hidden="true"></span><span class="t">${esc(t.title)}${dotsHTML(t)}${t.subs.length?`（子任務 ${doneSubs}/${t.subs.length}）`:''}${t.note?' · 有備註':''}</span></button>
     <span class="when mono">${t.doneAt?'完成於 '+shortDate(ymd(new Date(t.doneAt))):''}</span>
     <button class="mini" type="button" data-act="undone">取消完成</button>${t.archivedAt?'<button class="mini" type="button" data-act="unarchive">取消封存</button>':inArchive?'':'<button class="mini" type="button" data-act="archive">封存</button>'}<button class="mini" type="button" data-act="trash">丟到垃圾桶</button>`;
   if(open)h+=`<div class="detail ddetail-edit">${editFieldsHTML(t,true)}
     <div class="dfoot"><span class="hint">修改會直接存到雲端，月曆與周報同步更新。</span><button class="btn" type="button" data-act="doneExpand">收合</button></div></div>`;
   return h+'</div>';
+}
+
+/* ---------- 標籤（只有母任務有；資料在 labels、task_labels 兩張表） ---------- */
+const labelById=id=>state.labels.find(l=>l.id===id);
+const labelsOf=t=>(t.labels||[]).map(labelById).filter(Boolean).sort((a,b)=>state.labels.indexOf(a)-state.labels.indexOf(b));
+const labelNamesText=t=>labelsOf(t).map(l=>l.name).join('、');
+const dotsHTML=t=>{const ls=labelsOf(t);return ls.length?`<span class="tdots" aria-label="標籤：${esc(labelNamesText(t))}">${ls.map(l=>`<span class="tdot" style="--c:${l.color}" title="${esc(l.name)}"></span>`).join('')}</span>`:''};
+function labelRowHTML(t){
+  if(!state.labelsReady)return `<div class="field"><span class="lbl">標籤</span><div class="empty-note">標籤功能需要先在 Supabase 執行 supabase/004_labels.sql。</div></div>`;
+  return `<div class="field"><span class="lbl">標籤</span><div class="chips lchips">${state.labels.map(l=>`<button type="button" class="lpick" data-label-id="${l.id}" aria-pressed="${(t.labels||[]).includes(l.id)}" style="--c:${l.color}"><span class="tdot"></span>${esc(l.name)}</button>`).join('')}<button type="button" class="lmanage" data-open-labels>${state.labels.length?'管理標籤':'＋ 建立標籤'}</button></div></div>`;
+}
+function setTaskLabels(t,next){
+  const prev=t.labels||[],add=next.filter(id=>!prev.includes(id)),del=prev.filter(id=>!next.includes(id));
+  t.labels=next;render();
+  return persist(async()=>{for(const id of del)await API.removeTaskLabel(t.id,id);for(const id of add)await API.addTaskLabel(t.id,id)},'標籤儲存失敗');
+}
+function renderLabelBar(){
+  const el=$('#labelbar');if(!state.loaded||!state.labelsReady){el.innerHTML='';return}
+  const counts=new Map(state.labels.map(l=>[l.id,0]));
+  for(const t of state.tasks)if(!t.trashed)for(const id of t.labels||[])if(counts.has(id))counts.set(id,counts.get(id)+1);
+  const sel=ui.search&&searchActive()&&ui.search.labels.length===1?ui.search.labels[0]:null;
+  el.innerHTML=state.labels.map(l=>`<button type="button" class="lchip${counts.get(l.id)?'':' zero'}" data-label-filter="${l.id}" aria-pressed="${sel===l.id}" style="--c:${l.color}" title="顯示所有標記「${esc(l.name)}」的事項（不含垃圾桶）"><span class="tdot"></span>${esc(l.name)} <b>${counts.get(l.id)}</b></button>`).join('')
+    +`<button type="button" class="lmanage" data-open-labels>${state.labels.length?'管理標籤':'＋ 建立標籤'}</button>`;
 }
 
 /* 任務的可編輯欄位：清單展開與已完成區共用（已完成的任務多了「標題」與「完成日期」） */
@@ -848,6 +914,7 @@ function editFieldsHTML(t,withTitle){
         <div class="field"><label for="td-${t.id}">到期日</label><input type="date" class="date-in" id="td-${t.id}" data-f="due" value="${t.due||''}"></div>
         ${t.done?`<div class="field"><label for="tdd-${t.id}">完成日期</label><input type="date" class="date-in" id="tdd-${t.id}" data-f="doneDate" value="${t.doneAt?ymd(new Date(t.doneAt)):''}" max="${todayStr()}"></div>`:''}
       </div>
+      ${labelRowHTML(t)}
       <div class="field"><label for="tn-${t.id}">備註</label><textarea id="tn-${t.id}" data-f="note" placeholder="可留空">${esc(t.note)}</textarea></div>
       <div class="field"><span class="lbl">子任務</span>
         <div class="sublist">${t.subs.map(s=>subHTML(t,s)).join('')||'<div class="empty-note">還沒有子任務</div>'}</div>
@@ -904,11 +971,12 @@ function render(){
   const trash=state.tasks.filter(t=>t.trashed).sort((a,b)=>b.trashedAt-a.trashedAt);
   $('#trash-count').textContent=trash.length;
   $('#btn-empty').hidden=!trash.length;
-  $('#trash-list').innerHTML=trash.length?trash.map(t=>`<div class="ditem" data-id="${t.id}"><span class="t">${esc(t.title)}</span><button class="mini" type="button" data-act="restore">還原</button><button class="mini" type="button" data-act="purge" style="color:var(--danger)">永久刪除</button></div>`).join('')
+  $('#trash-list').innerHTML=trash.length?trash.map(t=>`<div class="ditem" data-id="${t.id}"><span class="t">${esc(t.title)}${dotsHTML(t)}</span><button class="mini" type="button" data-act="restore">還原</button><button class="mini" type="button" data-act="purge" style="color:var(--danger)">永久刪除</button></div>`).join('')
     :'<div class="empty-note">垃圾桶是空的。</div>';
 
   renderCal();
   renderSearch();
+  renderLabelBar();
   if(focusId){const el=document.getElementById(focusId);if(el){el.focus();if(sel&&'setSelectionRange' in el){try{el.setSelectionRange(sel[0],sel[1])}catch(e){}}}}
   updateBadge();
 }
@@ -1040,6 +1108,7 @@ function reportMD(r){
   if(!r.done.length)L.push('（本週沒有完成的項目）','');
   for(const t of r.done){
     L.push(`### ${t.title}`,`- 完成日期：${mdw(dayOf(t.doneAt))}`);
+    if(labelNamesText(t))L.push(`- 標籤：${labelNamesText(t)}`);
     if(t.due)L.push(`- 原訂到期：${mdw(t.due)}`);
     if(t.note&&t.note.trim())L.push(`- 備註：${pad(t.note,'  ')}`);
     if(t.subs.length){L.push('- 子任務：');t.subs.forEach(s=>sub(s,'  '))}
@@ -1050,6 +1119,7 @@ function reportMD(r){
   for(const t of r.progress){
     const doneW=t.subs.filter(s=>s.done&&r.inW(s.doneAt)), rest=t.subs.filter(s=>!s.done);
     L.push(`### ${t.title}`);
+    if(labelNamesText(t))L.push(`- 標籤：${labelNamesText(t)}`);
     if(t.due)L.push(`- 到期日：${mdw(t.due)}`);
     L.push('- 本週完成的子任務：');doneW.forEach(s=>sub(s,'  '));
     if(rest.length){L.push('- 尚未完成的子任務：');rest.forEach(s=>sub(s,'  '))}
@@ -1059,6 +1129,7 @@ function reportMD(r){
   if(r.overdue.length){
     L.push('## 已逾期、尚未完成','');
     for(const t of r.overdue){L.push(`- [ ] ${t.title}${t.due?`（原訂 ${mdw(t.due)}）`:''}`);
+      if(labelNamesText(t))L.push(`  - 標籤：${labelNamesText(t)}`);
       t.subs.filter(s=>!s.done&&s.due&&s.due<todayStr()).forEach(s=>sub(s,'  '));
       if(t.note&&t.note.trim())L.push(`  - 備註：${pad(t.note,'    ')}`)}
     L.push('');
@@ -1067,6 +1138,7 @@ function reportMD(r){
   if(!r.next.length)L.push('（下週沒有到期的項目）','');
   for(const t of r.next){
     L.push(`- [ ] ${t.title}${t.due?`（到期 ${mdw(t.due)}）`:''}`);
+    if(labelNamesText(t))L.push(`  - 標籤：${labelNamesText(t)}`);
     t.subs.filter(s=>!s.done&&r.inNext(s.due)).forEach(s=>sub(s,'  '));
   }
   return L.join('\n').replace(/\n{3,}/g,'\n\n').trim()+'\n';
@@ -1161,10 +1233,10 @@ $('#cal-pane').addEventListener('keydown',e=>{
 const SCOPES=[['active','進行中'],['done','已完成'],['archived','封存'],['trash','垃圾桶']];
 const FIELDS=[['title','標題'],['note','備註'],['subs','子任務']];
 const srDefaults=()=>({mode:'fuzzy',scope:SCOPES.map(x=>x[0]),fields:FIELDS.map(x=>x[0]),sort:'rel'});
-ui.search={q:'',from:'',to:'',open:false,paused:false,...srDefaults()};
+ui.search={q:'',from:'',to:'',labels:[],open:false,paused:false,...srDefaults()};
 try{const s=JSON.parse(localStorage.getItem('todo-search')||'null');if(s)for(const k of ['mode','scope','fields','sort'])if(s[k]!=null)ui.search[k]=s[k]}catch(e){}
 function saveSearchPrefs(){const s=ui.search;try{localStorage.setItem('todo-search',JSON.stringify({mode:s.mode,scope:s.scope,fields:s.fields,sort:s.sort}))}catch(e){}}
-const hasCriteria=()=>!!(ui.search.q.trim()||ui.search.from||ui.search.to);
+const hasCriteria=()=>!!(ui.search.q.trim()||ui.search.from||ui.search.to||ui.search.labels.length);
 const searchActive=()=>hasCriteria()&&!ui.search.paused;
 
 /* 任務目前在哪一區（與清單的封存規則一致） */
@@ -1214,6 +1286,7 @@ function runSearch(){
   for(const t of state.tasks){
     const st=statusOf(t);if(!s.scope.includes(st))continue;
     if(s.from||s.to){if(!t.doneAt||t.doneAt<fromMs||t.doneAt>=toMs)continue}
+    if(s.labels.length&&!(t.labels||[]).some(id=>s.labels.includes(id)))continue;
     const r=searchTask(t);if(!r)continue;
     out.push({t,st,...r});
   }
@@ -1245,6 +1318,8 @@ function resultHTML(r){
   let h=`<article class="sr-item" data-id="${t.id}">
     <div class="sr-top"><span class="sbadge s-${st}">${STATUS_LABEL[st]}</span>
       <button class="sr-title" type="button" data-sr-open="${t.id}" title="在清單中開啟">${markText(t.title,titleHit&&titleHit[1])}</button>
+      ${labelsOf(t).map(l=>`<span class="tlabel" style="--c:${l.color}">${esc(l.name)}</span>`).join('')}
+      ${ui.search.labels.some(id=>(t.labels||[]).includes(id))?`<button class="mini" type="button" data-sr-unlabel="${t.id}" title="把篩選中的標籤從這個任務拿掉">移除標籤</button>`:''}
       <span class="sr-dates mono">${dates}</span>
       ${st==='trash'?'<button class="mini" type="button" data-act="restore">還原</button>':''}</div>`;
   const snips=[];
@@ -1258,6 +1333,7 @@ function resultHTML(r){
 function criteriaText(){
   const s=ui.search,all=(sel,list)=>sel.length===list.length?'全部':list.filter(x=>sel.includes(x[0])).map(x=>x[1]).join('、');
   return [s.q.trim()?`關鍵字「${s.q.trim()}」（${s.mode==='fuzzy'?'模糊':'精準'}）`:'',
+    s.labels.length?`標籤：${s.labels.map(labelById).filter(Boolean).map(l=>l.name).join('、')}`:'',
     `範圍：${all(s.scope,SCOPES)}`, s.q.trim()?`欄位：${all(s.fields,FIELDS)}`:'',
     (s.from||s.to)?`完成日期：${s.from?mdw(s.from):'不限'}～${s.to?mdw(s.to):'不限'}`:''].filter(Boolean).join('｜');
 }
@@ -1265,7 +1341,9 @@ function renderSearch(){
   const s=ui.search,act=searchActive()&&state.loaded;
   // 篩選面板的狀態
   $('#sr-panel').hidden=!s.open;$('#sr-filter').setAttribute('aria-expanded',s.open);
-  const nonDefault=(s.mode!=='fuzzy')+(s.scope.length!==SCOPES.length)+(s.fields.length!==FIELDS.length)+(!!(s.from||s.to));
+  const nonDefault=(s.mode!=='fuzzy')+(s.scope.length!==SCOPES.length)+(s.fields.length!==FIELDS.length)+(!!(s.from||s.to))+(s.labels.length>0);
+  $('#sr-label-row').hidden=!(state.labelsReady&&state.labels.length);
+  $('#sr-labels').innerHTML=`<button type="button" data-sr-label="none" aria-pressed="${!s.labels.length}">不限</button>`+state.labels.map(l=>`<button type="button" class="lpick" data-sr-label="${l.id}" aria-pressed="${s.labels.includes(l.id)}" style="--c:${l.color}"><span class="tdot"></span>${esc(l.name)}</button>`).join('');
   $('#sr-filter').textContent=nonDefault?`篩選（${nonDefault}）`:'篩選';
   document.querySelectorAll('[data-sr-mode]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.srMode===s.mode));
   document.querySelectorAll('[data-sr-scope]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.srScope==='all'?s.scope.length===SCOPES.length:s.scope.length!==SCOPES.length&&s.scope.includes(b.dataset.srScope)));
@@ -1296,6 +1374,7 @@ function searchMD(res){
   L.push(`# ${title}`,'',`> 條件：${criteriaText()}｜共 ${res.length} 項。由 ToDo 於 ${new Date().toLocaleString('zh-TW',{hour12:false})} 匯出。`,'');
   for(const {t,st} of res){
     L.push(`## ${t.title}`,`- 狀態：${STATUS_LABEL[st]}`);
+    if(labelNamesText(t))L.push(`- 標籤：${labelNamesText(t)}`);
     if(t.doneAt)L.push(`- 完成日期：${mdw(dayOf(t.doneAt))}`);
     if(t.due)L.push(`- 到期日：${mdw(t.due)}`);
     if(t.note&&t.note.trim())L.push(`- 備註：${pad(t.note,'  ')}`);
@@ -1337,6 +1416,7 @@ function toggleIn(list,all,key){
 }
 $('#sr-panel').addEventListener('click',e=>{
   const s=ui.search,b=e.target.closest('button');if(!b)return;
+  if(b.dataset.srLabel){const id=b.dataset.srLabel;s.labels=id==='none'?[]:s.labels.includes(id)?s.labels.filter(x=>x!==id):[...s.labels,id];updateSearch();return}
   if(b.dataset.srMode){s.mode=b.dataset.srMode}
   else if(b.dataset.srScope){s.scope=toggleIn(s.scope,SCOPES,b.dataset.srScope)}
   else if(b.dataset.srField){s.fields=toggleIn(s.fields,FIELDS,b.dataset.srField)}
@@ -1352,7 +1432,11 @@ $('#sr-panel').addEventListener('click',e=>{
 });
 $('#sr-from').addEventListener('change',e=>{ui.search.from=e.target.value;updateSearch()});
 $('#sr-to').addEventListener('change',e=>{ui.search.to=e.target.value;updateSearch()});
-function clearSearch(){Object.assign(ui.search,{q:'',from:'',to:'',paused:false});$('#sr-q').value='';renderSearch()}
+function clearSearch(){
+  Object.assign(ui.search,{q:'',from:'',to:'',labels:[],paused:false});
+  try{const p=JSON.parse(localStorage.getItem('todo-search')||'null');ui.search.scope=(p&&p.scope)||srDefaults().scope}catch(e){ui.search.scope=srDefaults().scope} // 點標籤時暫時排除垃圾桶，清除後還原
+  $('#sr-q').value='';render();
+}
 $('#sr-clear').addEventListener('click',()=>{clearSearch();$('#sr-q').focus()});
 $('#sr-back').addEventListener('click',()=>{ui.search.paused=false;renderSearch();$('#list-pane').scrollIntoView({block:'start'})});
 $('#search-results').addEventListener('click',e=>{
@@ -1362,6 +1446,9 @@ $('#search-results').addEventListener('click',e=>{
       if(el){el.scrollIntoView({block:'center'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}}
     else focusTask(id);
     return}
+  const un=e.target.closest('[data-sr-unlabel]');
+  if(un){const t=findT(un.dataset.srUnlabel);if(!t)return;const prev=[...(t.labels||[])];
+    setTaskLabels(t,prev.filter(id=>!ui.search.labels.includes(id)));toast(`已移除「${t.title}」的標籤`,()=>{const c=findT(t.id);if(c)setTaskLabels(c,prev)});return}
   const so=e.target.closest('[data-sr-sort]');if(so){ui.search.sort=so.dataset.srSort;saveSearchPrefs();renderSearch();return}
   const ex=e.target.closest('[data-sr-export]');if(ex){exportSearch(ex.dataset.srExport);return}
   if(e.target.closest('[data-sr-clear]')){clearSearch();return}
@@ -1369,6 +1456,64 @@ $('#search-results').addEventListener('click',e=>{
 document.addEventListener('keydown',e=>{ // 按 / 或 Ctrl／⌘+K 跳到搜尋框
   const ae=document.activeElement,typing=ae&&ae.matches&&ae.matches('input,textarea,select,[contenteditable]');
   if(((e.key==='/'&&!typing)||((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'))&&!$('#app').hidden){e.preventDefault();$('#sr-q').focus();$('#sr-q').select()}
+});
+
+/* ---------- 標籤：點選、管理 ---------- */
+$('#labelbar').addEventListener('click',e=>{
+  const b=e.target.closest('[data-label-filter]');if(!b)return;
+  const id=b.dataset.labelFilter,s=ui.search;
+  if(searchActive()&&s.labels.length===1&&s.labels[0]===id&&!s.q.trim()&&!s.from&&!s.to){clearSearch();return} // 再點一次就關閉
+  Object.assign(s,{q:'',from:'',to:'',labels:[id],scope:SCOPES.map(x=>x[0]).filter(k=>k!=='trash'),paused:false});
+  $('#sr-q').value='';updateSearch();render();
+});
+document.addEventListener('click',e=>{
+  if(e.target.closest('[data-open-labels]')){openLabels();return}
+  const b=e.target.closest('.lpick[data-label-id]');if(!b)return;
+  const host=b.closest('[data-id]'),t=host&&findT(host.dataset.id);if(!t)return;
+  const id=b.dataset.labelId,cur=t.labels||[];
+  setTaskLabels(t,cur.includes(id)?cur.filter(x=>x!==id):[...cur,id]);
+});
+const dlgL=$('#dlg-labels');let ldraft=null;
+const LPAL=['#E8642E','#2E8FB8','#7A5CC2','#3E9B6B','#B5527F','#CFAE1F','#5F6B7B'];
+const addDraftLabel=()=>ldraft.push({id:API.newId(),name:'',color:LPAL[ldraft.length%LPAL.length]});
+function drawLabels(){
+  const cnt=id=>state.tasks.filter(t=>!t.trashed&&(t.labels||[]).includes(id)).length;
+  $('#label-table').innerHTML=ldraft.length?ldraft.map((l,i)=>`<div class="lrow" data-lid="${l.id}">
+    <input type="color" id="lc-${l.id}" value="${l.color}" data-lk="color" aria-label="顏色">
+    <input class="text-in" id="ln-${l.id}" value="${esc(l.name)}" data-lk="name" aria-label="標籤名稱" placeholder="標籤名稱，例如：待追蹤">
+    <span class="lcount">${cnt(l.id)} 個任務</span>
+    <button class="x" type="button" data-lmove="-1" ${i?'':'disabled'} aria-label="上移">↑</button>
+    <button class="x" type="button" data-lmove="1" ${i<ldraft.length-1?'':'disabled'} aria-label="下移">↓</button>
+    <button class="x del" type="button" data-ldel aria-label="刪除標籤">×</button></div>`).join('')
+    :'<div class="empty-note">還沒有標籤，按「新增標籤」建立第一個。</div>';
+}
+function openLabels(){
+  if(!state.loaded)return;
+  if(!state.labelsReady){toast('標籤功能需要先在 Supabase 執行 supabase/004_labels.sql。');return}
+  ldraft=state.labels.map(l=>({...l}));if(!ldraft.length)addDraftLabel();
+  $('#label-err').hidden=true;drawLabels();dlgL.showModal();
+  const empty=ldraft.find(l=>!l.name);if(empty)document.getElementById('ln-'+empty.id)?.focus();
+}
+$('#label-table').addEventListener('input',e=>{const row=e.target.closest('[data-lid]');if(!row)return;const l=ldraft.find(x=>x.id===row.dataset.lid);if(l&&e.target.dataset.lk)l[e.target.dataset.lk]=e.target.value});
+$('#label-table').addEventListener('click',e=>{
+  const row=e.target.closest('[data-lid]');if(!row)return;const i=ldraft.findIndex(x=>x.id===row.dataset.lid);
+  const mv=e.target.closest('[data-lmove]');
+  if(mv){const j=i+Number(mv.dataset.lmove);if(j<0||j>=ldraft.length)return;[ldraft[i],ldraft[j]]=[ldraft[j],ldraft[i]];drawLabels();return}
+  const del=e.target.closest('[data-ldel]');if(!del)return;
+  const used=state.tasks.some(t=>!t.trashed&&(t.labels||[]).includes(ldraft[i].id));
+  if(used&&!row.classList.contains('confirm')){row.classList.add('confirm');del.textContent='確定刪除';return} // 有任務在用的標籤，要點兩次才刪
+  ldraft.splice(i,1);drawLabels();
+});
+$('#label-add').addEventListener('click',()=>{addDraftLabel();drawLabels();document.getElementById('ln-'+ldraft[ldraft.length-1].id)?.focus()});
+$('#label-save').addEventListener('click',()=>{
+  const err=$('#label-err');ldraft.forEach(l=>l.name=l.name.trim());
+  if(ldraft.some(l=>!l.name)){err.textContent='每個標籤都需要名稱（不需要的請按 × 刪除）。';err.hidden=false;return}
+  const names=ldraft.map(l=>l.name);if(new Set(names).size!==names.length){err.textContent='有兩個標籤名稱相同，請改成不同的名稱。';err.hidden=false;return}
+  const prev=state.labels,next=ldraft.map(l=>({...l})),keep=new Set(next.map(l=>l.id));
+  state.labels=next;state.tasks.forEach(t=>{if(t.labels)t.labels=t.labels.filter(id=>keep.has(id))});
+  ui.search.labels=ui.search.labels.filter(id=>keep.has(id));
+  ldraft=null;dlgL.close();render();
+  persist(()=>API.saveLabels(next,prev),'標籤儲存失敗').then(ok=>{if(ok)toast('標籤已儲存')});
 });
 
 /* ---------- toast ---------- */
